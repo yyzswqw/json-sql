@@ -1,11 +1,15 @@
 package json.sql.grammar;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.util.ObjectUtil;
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
+import com.jayway.jsonpath.internal.JsonContext;
+import json.sql.enums.MacroEnum;
 import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
 import json.sql.udf.CustomMethod;
@@ -28,14 +32,23 @@ import java.util.Map;
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     private static Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
+    private static Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
     static{
         try {
             Method a = CustomMethod.class.getMethod("a", Number.class, Object.class);
             Method b = CustomMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
+            Method c = CustomMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
+            Method d = CustomMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
+
             registerFunction("a", a,Number.class, Object.class);
             registerFunction("b", b,BigDecimal.class, BigDecimal.class);
-            registerFunction("c", b);
+            registerFunction("c", c,BigDecimal.class, BigDecimal.class);
+            registerFunction("d", d);
+
+            registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+            registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -45,7 +58,21 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(argsType == null || argsType.length == 0){
             methodTable.put(functionName,method,new ArrayList<>());
         }else{
+            if (methodTable.containsRow(functionName)) {
+                throw new RuntimeException("已存在 function : "+functionName);
+            }
             methodTable.put(functionName,method,Arrays.asList(argsType));
+        }
+    }
+
+    public static void registerMacro(String functionName,MacroEnum ... macros) {
+        if(macros == null || macros.length == 0){
+            return ;
+        }else{
+            if (macroMap.containsKey(functionName)) {
+                throw new RuntimeException("已存在 macro : "+functionName);
+            }
+            macroMap.put(functionName,Arrays.asList(macros));
         }
     }
 
@@ -108,7 +135,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 ////                "else toJson('{\"a\":23,\"b\":\"ab\"}') end " +
 //                "else toJsonByPath('$..book[:3][\"category\"]') end " +
 //                " where true = true";
-        String sql = "update a1 SET name = 'a',age = 31.32,name=null where $a($b(jsonPath('$.p4'),12),'b') >= 1.1";
+        String sql = "update a1 SET name = 'a',age = 31.32,name=null where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 
         json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
@@ -172,7 +199,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitUpdateStatement(json.sql.parse.SqlParser.UpdateStatementContext ctx) {
+    public Object visitUpdateStatement(SqlParser.UpdateStatementContext ctx) {
         //        String tableName = ctx.tableName().getText();
 
         // 处理 WHERE 子句
@@ -677,16 +704,28 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         String methodName = customId.getText().substring(1);
         Map<Method, List<Class<?>>> row = methodTable.row(methodName);
+        if(row == null || row.isEmpty()){
+            throw new RuntimeException("not has function : "+methodName);
+        }
         Map.Entry<Method, List<Class<?>>> methodListEntry = row.entrySet().stream().findFirst().get();
         Method method = methodListEntry.getKey();
         List<Class<?>> argsTypeClasses = methodListEntry.getValue();
         List<Object> innerArgsList = new ArrayList<>();
         Object result = null;
         if(method != null){
-
+            List<MacroEnum> macroEnums = macroMap.get(methodName);
+            if(ObjectUtil.isNotEmpty(macroEnums)){
+                for (MacroEnum macroEnum : macroEnums) {
+                    innerArgsList.add(getMacro(macroEnum));
+                }
+            }
             try {
                 if(argsTypeClasses.isEmpty()){
-                    result = method.invoke(null);
+                    if(ObjectUtil.isNotEmpty(innerArgsList)){
+                        result = method.invoke(null,innerArgsList.toArray());
+                    }else {
+                        result = method.invoke(null);
+                    }
                 }else{
                     for (int i = 0; i < argsTypeClasses.size(); i++) {
                         Class<?> aClass = argsTypeClasses.get(i);
@@ -710,6 +749,24 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
 
         return result;
+    }
+
+    private Object getMacro(MacroEnum macroEnum) {
+        if(macroEnum != null){
+            switch (macroEnum){
+                case ORIGINAL_JSON:
+                    return this.jsonString;
+                case READ_DOCUMENT:
+                case ORIGINAL_WRITE_DOCUMENT:
+                    return this.document;
+                case COPY_WRITE_WRITE_DOCUMENT:
+                    return this.newDocument;
+                case CUR_WRITE_DOCUMENT:
+                    return writeModel ? this.newDocument : this.document;
+                default: return null;
+            }
+        }
+        return null;
     }
 
     public Object read(String jsonPath){

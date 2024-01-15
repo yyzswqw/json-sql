@@ -94,9 +94,6 @@
                 </executions>
                 <configuration>
                     <sourceDirectory>src${file.separator}main${file.separator}resources${file.separator}grammar</sourceDirectory>
-<!--                    <outputDirectory>target/classes/util/shell/grammar</outputDirectory>-->
-<!--                    <outputDirectory>src/main/resources/util/shell/grammar</outputDirectory>-->
-<!--                    <outputDirectory>src/main/java/util/shell/grammar</outputDirectory>-->
                     <listener>true</listener>
                     <visitor>true</visitor>
                     <treatWarningsAsErrors>true</treatWarningsAsErrors>
