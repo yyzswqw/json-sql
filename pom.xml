@@ -60,7 +60,6 @@
             <version>4.9.1</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.jayway.jsonpath/json-path -->
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
@@ -72,12 +71,6 @@
     </dependencies>
 
     <build>
-
-<!--        <resources>-->
-<!--            <resource>-->
-<!--                <directory>src/main/java/util/shell/grammar</directory>-->
-<!--            </resource>-->
-<!--        </resources>-->
         <plugins>
 
             <plugin>

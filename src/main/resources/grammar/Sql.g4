@@ -52,7 +52,7 @@ jsonPathFunction: 'jsonPath(' STRING ')';
 updateSql: updateStatement;
 updateStatement : (update tableName)? set setClause (where expression)?;
 setClause : setExpression (',' setExpression)* ;
-setExpression : columnName '=' (relationalExpr | caseExpr);
+setExpression : columnName '=' (relationalExpr | caseExpr | delColumnExpr);
 
 tableName : ID;
 columnName : ID | jsonPathFunction;
@@ -60,6 +60,8 @@ literalValue : STRING | doubleValue | intValue | nullLable | boolLable;
 stringValue: ('"' (~('\\' | '"') | '\\' .)* '"') | ('\'' (~('\\' | '\'') | '\\' .)* '\'');
 intValue : INT;
 doubleValue : DOUBLE;
+
+delColumnExpr : 'del' '(' ')';
 
 caseExpr : caseLable whenBranch+ elseBranch? endLable;
 whenBranch : whenLable condition thenLable relationalExpr;
