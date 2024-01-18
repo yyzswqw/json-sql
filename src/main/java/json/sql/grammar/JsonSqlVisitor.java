@@ -7,9 +7,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Table;
-import com.jayway.jsonpath.DocumentContext;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
+import com.jayway.jsonpath.*;
 import json.sql.config.TableConfig;
 import json.sql.entity.TableContext;
 import json.sql.enums.MacroEnum;
@@ -28,6 +26,7 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Data
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
@@ -36,8 +35,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     private static Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
     private static Map<String, TableContext> tableDataMap = Maps.newHashMap();
-    private static Queue<String> tableNameQueue = Queues.newLinkedBlockingDeque();
+    private static Stack<String> tableNameStack = new Stack<>();
     private static final String MAIN_TABLE_NAME = "__$$main_table_name$$__";
+
+    private static final Pattern colNamePattern = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*$");
 
     static{
         try {
@@ -169,12 +170,16 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 ////                "else toJson('{\"a\":23,\"b\":\"ab\"}') end " +
 //                "else toJsonByPath('$..book[:3][\"category\"]') end " +
 //                " where true = true";
-        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 //        String sql = "SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+        String sql = "select * from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "select p1,p2,p3,p4 + 1 as aA1,p5,toJson('{\"a\":1}') from b1";
 
         json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
-        ParseTree tree = parser.updateSql();
+//        ParseTree tree = parser.updateSql();
+        ParseTree tree = parser.selectStatement();
 
         JsonSqlVisitor.registerTable("a1", jsonStr);
         JsonSqlVisitor.registerTable("b1", jsonStr);
@@ -205,7 +210,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(ObjectUtil.isNotEmpty(writeModel)){
             JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
-        visitor.visit(tree);
+        Object visit = visitor.visit(tree);
+        if(tree instanceof SqlParser.SelectStatementContext){
+            return visit == null ? "{}":visit.toString();
+        }
         return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
     }
 
@@ -232,7 +240,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(ObjectUtil.isNotEmpty(writeModel)){
             JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
-        visitor.visit(tree);
+        Object visit = visitor.visit(tree);
+        if(tree instanceof SqlParser.SelectStatementContext){
+            return visit == null ? "{}":visit.toString();
+        }
         return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
     }
 
@@ -329,9 +340,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             if (!tableDataMap.containsKey(tableName)) {
                 throw new RuntimeException("not exist table : "+tableName);
             }
-            tableNameQueue.add(tableName);
+            tableNameStack.push(tableName);
         }else{
-            tableNameQueue.add(MAIN_TABLE_NAME);
+            tableNameStack.push(MAIN_TABLE_NAME);
         }
 
         // 处理 WHERE 子句
@@ -367,7 +378,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(expression != null){
             return visitExpression(expression);
         }
-        return null;
+        return true;
     }
 
     @Override
@@ -662,7 +673,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.RelationalExprContext relationalExprContext = ctx.relationalExpr();
         SqlParser.CaseExprContext caseExprContext = ctx.caseExpr();
         SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
-        String tableName = tableNameQueue.peek();
+        String tableName = tableNameStack.peek();
         if(delColumnExprContext != null){
             try {
                 Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
@@ -865,8 +876,85 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return result;
     }
 
+
+//    ====================== select ============================
+
+    @Override
+    public Object visitSelectStatement(SqlParser.SelectStatementContext ctx) {
+        SqlParser.SelectListContext selectListContext = ctx.selectList();
+        SqlParser.TableNameContext tableNameContext = ctx.tableName();
+//        TerminalNode tableNameContext = ctx.ONEID();
+        SqlParser.ExpressionContext expression = ctx.expression();
+        String tableName = tableNameContext.getText();
+        tableNameStack.push(tableName);
+        boolean condition = true;
+        if(ObjectUtil.isNotEmpty(expression)){
+            condition = (Boolean) visitExpression(expression);
+        }
+        if(!condition){
+            tableNameStack.pop();
+            return null;
+        }
+        Object v = visitSelectList(selectListContext);
+        return v == null ? "{}":v.toString();
+    }
+
+    @Override
+    public Object visitStarLable(SqlParser.StarLableContext ctx) {
+        return read("$");
+    }
+
+
+
+    @Override
+    public Object visitSelectList(SqlParser.SelectListContext ctx) {
+        List<SqlParser.SelectItemContext> selectItemContexts = ctx.selectItem();
+        Configuration defaultConf = Configuration.defaultConfiguration();
+        ParseContext parseContext = JsonPath.using(defaultConf);
+        Map result = new LinkedHashMap();
+        String genColName = "_c";
+        int genColNameIndex = 0;
+        for (SqlParser.SelectItemContext selectItemContext : selectItemContexts) {
+            SqlParser.StarLableContext starLableContext = selectItemContext.starLable();
+            SqlParser.RelationalExprContext relationalExprContext = selectItemContext.relationalExpr();
+            TerminalNode oneId = selectItemContext.ID();
+            if(ObjectUtil.isNotEmpty(starLableContext)){
+                Object v1 = visitStarLable(starLableContext);
+                if(ObjectUtil.isNotEmpty(v1)){
+                    Map tempResult = parseContext.parse(v1).read("$", Map.class);
+                    if(ObjectUtil.isNotEmpty(tempResult)){
+                        result.putAll(tempResult);
+                    }
+                }
+            }
+            String colName;
+            if(ObjectUtil.isNotEmpty(relationalExprContext)){
+                Object tempResult = visit(relationalExprContext);
+                if(ObjectUtil.isNotEmpty(oneId)){
+                    colName = oneId.getText();
+                }else{
+                    String tempColName = relationalExprContext.getText();
+                    if (colNamePattern.matcher(tempColName).find()) {
+                        colName = tempColName;
+                    }else{
+                        colName = genColName + genColNameIndex;
+                        genColNameIndex += 1;
+                    }
+
+                }
+                result.put(colName,tempResult);
+            }
+
+        }
+        return JsonPath.parse(result).jsonString();
+    }
+
+
+    //    ====================== select ============================
+
+
     private Object getMacro(MacroEnum macroEnum) {
-        String tableName = tableNameQueue.peek();
+        String tableName = tableNameStack.peek();
         if(macroEnum != null){
             switch (macroEnum){
                 case ORIGINAL_JSON:
@@ -887,7 +975,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     public Object read(String jsonPath){
         try {
-            String tableName = tableNameQueue.peek();
+            String tableName = tableNameStack.peek();
             return getTableContextDocument(tableName).read(jsonPath);
         }catch (Exception e){
             e.printStackTrace();

@@ -20,6 +20,7 @@ fragment UNDERSCORE : '_';
 
 CUSTOMID : '$' (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* ;
 ID : (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* | ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*) ('.' ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*))*;
+//ONEID : (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* ;
 STRING : ('"' (~('\\' | '"') | '\\' .)* '"') | ('\'' (~('\\' | '\'') | '\\' .)* '\'');
 INT : '-'? DIGIT+;
 DOUBLE : '-'? ([0-9]+ '.' [0-9]* | '.' [0-9]+);
@@ -42,7 +43,11 @@ whenLable: 'WHEN' | 'when';
 thenLable: 'THEN' | 'then';
 elseLable: 'ELSE' | 'else';
 
-//toJsonFunction: 'toJson(' STRING | jsonPathFunction ')';
+selectLable: 'SELECT' | 'select';
+fromLable: 'FROM' | 'from';
+asLable: 'AS' | 'as';
+starLable: '*';
+
 toJsonFunction: 'toJson(' STRING ')';
 toJsonByPathFunction: 'toJsonByPath(' STRING ')';
 jsonPathFunction: 'jsonPath(' STRING ')';
@@ -103,15 +108,11 @@ likeExpression : columnName (notLable)? 'LIKE' stringValue;
 // IS NULL子句
 isNullExpression : columnName isLable (notLable)? nullLable;
 
-// 操作符优先级
-expressionList : expression (',' expression)*;
-operatorExpr : columnName operator expressionList;
-operator : ('+' | '-' | '*' | '/' | '%');
-
-// selectStatement规则示例，用于参考
-selectStatement : 'SELECT' ('*' | selectList) 'FROM' tableName ('WHERE' expression)?;
+selectStatement : selectLable selectList fromLable tableName (where expression)?;
 selectList : selectItem (',' selectItem)*;
-selectItem : columnName;
+selectItem : relationalExpr (asLable ID)?  | starLable ;
+//selectItem : relationalExpr (asLable tableName)? | starLable ;
+
 
 
 
