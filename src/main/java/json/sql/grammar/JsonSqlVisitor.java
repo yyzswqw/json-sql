@@ -146,7 +146,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
         Object visit = visitor.visit(tree);
-        if(tree instanceof SqlParser.SelectStatementContext){
+        if(ObjectUtil.isNotEmpty(visit)){
             return visit == null ? "{}":visit.toString();
         }
         return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
