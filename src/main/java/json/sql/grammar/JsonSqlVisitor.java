@@ -5,7 +5,6 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Queues;
 import com.google.common.collect.Table;
 import com.jayway.jsonpath.*;
 import json.sql.config.TableConfig;
@@ -15,6 +14,7 @@ import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
 import json.sql.udf.CustomMethod;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 @Data
+@Slf4j
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     private static Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
@@ -112,7 +113,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     private static String jsonStr = "{\n" +
-            "\t\"p3\": \"aa\",\n" +
+            "\t\"p3\": \"reference\",\n" +
             "\t\"p4\": 5,\n" +
             "\t\"p1\": \"aa\",\n" +
             "\t\"store\": {\n" +
@@ -170,17 +171,24 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 ////                "else toJson('{\"a\":23,\"b\":\"ab\"}') end " +
 //                "else toJsonByPath('$..book[:3][\"category\"]') end " +
 //                " where true = true";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
+//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
 //        String sql = "SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 //        String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
-        String sql = "select * from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 in (select 1 as abc from b1 where 1=1 as abc)";
+//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 not in (1,2,3,22.99)";
+//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where not exists (select 1 from b1 where 1!=1 as _c0)";
+//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 3 between 1+1 and p4*2";
+//        String sql = "select case when 1>2 then 1 end as c,1 as b ,jsonPath('$..book[0][\"category\"]') as c from a1 where p3 like '^refer'";
+//        String sql = "select case when 1>2 then 1 end as c from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 //        String sql = "select p1,p2,p3,p4 + 1 as aA1,p5,toJson('{\"a\":1}') from b1";
+//        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 != 5";
+//        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where 51 in (select p4 from b1 as p4)";
+        String sql = "select * from a1";
 
         json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
-//        ParseTree tree = parser.updateSql();
-        ParseTree tree = parser.selectStatement();
-
+        ParseTree tree = parser.sql();
         JsonSqlVisitor.registerTable("a1", jsonStr);
         JsonSqlVisitor.registerTable("b1", jsonStr);
         JsonSqlVisitor.setTableConfig("a1", TableConfig.WRITE_MODEL,true);
@@ -211,6 +219,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
         Object visit = visitor.visit(tree);
+        if(ObjectUtil.isNotEmpty(visit)){
+            return visit == null ? "{}":visit.toString();
+        }
         if(tree instanceof SqlParser.SelectStatementContext){
             return visit == null ? "{}":visit.toString();
         }
@@ -332,6 +343,43 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return tableContext == null?null:tableContext.getOriginalJson();
     }
 
+    public static int delCol(String tableName,String jsonPath){
+        TableContext tableContext = getTableContext(tableName);
+        if(ObjectUtil.isEmpty(tableContext)){
+            return 0;
+        }
+        try {
+            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            if(writeModel){
+                getTableContextNewDocument(tableName).delete(jsonPath);
+            }else{
+                getTableContextDocument(tableName).delete(jsonPath);
+            }
+            return 1;
+        }catch (PathNotFoundException e){
+        }
+        return 0;
+    }
+
+
+
+    @Override
+    public Object visitSql(SqlParser.SqlContext ctx) {
+        SqlParser.UpdateStatementContext updateStatementContext = ctx.updateStatement();
+        SqlParser.SelectStatementContext selectStatementContext = ctx.selectStatement();
+        SqlParser.DeleteStatementContext deleteStatementContext = ctx.deleteStatement();
+        if(ObjectUtil.isNotEmpty(updateStatementContext)){
+            return visitUpdateStatement(updateStatementContext);
+        }
+        if(ObjectUtil.isNotEmpty(selectStatementContext)){
+            return visitSelectStatement(selectStatementContext);
+        }
+        if(ObjectUtil.isNotEmpty(deleteStatementContext)){
+            return visitDeleteStatement(deleteStatementContext);
+        }
+        return null;
+    }
+
     @Override
     public Object visitUpdateStatement(SqlParser.UpdateStatementContext ctx) {
         SqlParser.TableNameContext tableNameContext = ctx.tableName();
@@ -352,10 +400,13 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 // 处理 SET 子句
                 if (ctx.setClause() != null) {
                     visit(ctx.setClause());
+                    return 1;
                 }
                 System.out.println("条件满足");
+                return 0;
             } else {
                 System.out.println("条件不满足");
+                return 0;
             }
         } else {
             // 处理 SET 子句
@@ -363,9 +414,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 visit(ctx.setClause());
             }
             System.out.println("没有条件");
+            return 1;
         }
-
-        return null;
     }
 
     @Override
@@ -542,6 +592,22 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if (expression != null) {
             return visitExpression(expression);
         }
+        SqlParser.InSubqueryExpressionContext inSubqueryExpressionContext = ctx.inSubqueryExpression();
+        if (inSubqueryExpressionContext != null) {
+            return visitInSubqueryExpression(inSubqueryExpressionContext);
+        }
+        SqlParser.ExistsSubqueryExpressionContext existsSubqueryExpressionContext = ctx.existsSubqueryExpression();
+        if (existsSubqueryExpressionContext != null) {
+            return visitExistsSubqueryExpression(existsSubqueryExpressionContext);
+        }
+        SqlParser.BetweenExpressionContext betweenExpressionContext = ctx.betweenExpression();
+        if (betweenExpressionContext != null) {
+            return visitBetweenExpression(betweenExpressionContext);
+        }
+        SqlParser.LikeExpressionContext likeExpressionContext = ctx.likeExpression();
+        if (likeExpressionContext != null) {
+            return visitLikeExpression(likeExpressionContext);
+        }
         return false;
     }
 
@@ -551,24 +617,80 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         switch(operator) {
             case "=":
-                return left.toString().equals(right.toString());
+                return compareValue(left,right) == 0;
             case "<>":
             case "!=":
-                return !left.toString().equals(right.toString());
+                return compareValue(left,right) != 0;
             case ">":
-                return compareNumbers(left, right) > 0;
+                return compareValue(left,right) > 0;
             case ">=":
-                return compareNumbers(left, right) >= 0;
+                return compareValue(left,right) >= 0;
             case "<":
-                return compareNumbers(left, right) < 0;
+                return compareValue(left,right) < 0;
             case "<=":
-                return compareNumbers(left, right) <= 0;
+                return compareValue(left,right) <= 0;
             default:
                 return false;
         }
     }
 
-    private int compareNumbers(Object left, Object right) {
+    private int compareValue(Object left, Object right) {
+        // 先尝试时间比较
+        try {
+            // 是时间类型或者是字符串类型，才尝试使用时间比较
+            if((left instanceof Date || left instanceof CharSequence)
+             && (right instanceof Date || right instanceof CharSequence)){
+                Date d1 = Convert.convert(Date.class, left);
+                Date d2 = Convert.convert(Date.class, right);
+                return d1.compareTo(d2);
+            }
+            throw new RuntimeException("时间类型不正确，不能比较");
+        }catch (Exception e){}
+        // 时间不能比较，则尝试数字比较
+        try {
+            // 其中一个是数字，才尝试比较
+            if(left instanceof Number || right instanceof Number){
+                return compareNumbers(left,right);
+            }
+            throw new RuntimeException("number类型不正确，不能比较");
+        }catch (Exception e){}
+        // 数字不能比较，则尝试boolean比较
+        try {
+            // 两个都能转成boolean，才比较
+            Boolean b1 = null;
+            Boolean b2 = null;
+            if (Boolean.TRUE.toString().equalsIgnoreCase(left.toString()) || Boolean.FALSE.toString().equalsIgnoreCase(left.toString())) {
+                b1 = Boolean.parseBoolean(left.toString());
+            }
+            if (Boolean.TRUE.toString().equalsIgnoreCase(right.toString()) || Boolean.FALSE.toString().equalsIgnoreCase(right.toString())) {
+                b2 = Boolean.parseBoolean(right.toString());
+            }
+            if(ObjectUtil.hasEmpty(b1,b2)){
+                throw new RuntimeException("不可比较");
+            }
+            if(Boolean.TRUE.equals(b1) && Boolean.TRUE.equals(b2)){
+                return 0;
+            }
+            if(Boolean.TRUE.equals(b1) && Boolean.FALSE.equals(b2)){
+                return 1;
+            }
+            if(Boolean.FALSE.equals(b1) && Boolean.TRUE.equals(b2)){
+                return -1;
+            }
+            if(Boolean.FALSE.equals(b1) && Boolean.FALSE.equals(b2)){
+                return 0;
+            }
+        }catch (Exception e){}
+        // 还不能比较，按照字符串比较
+        try {
+            String s1 = left.toString();
+            String s2 = right.toString();
+            return s1.compareTo(s2);
+        }catch (Exception e){}
+        return -1;
+    }
+
+    private int compareNumbers(Object left, Object right) throws Exception {
         if (left instanceof Integer && right instanceof Integer) {
             return ((Integer) left).compareTo((Integer) right);
         }
@@ -589,14 +711,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             BigDecimal v2 = (BigDecimal)right;
             return v1.compareTo(v2);
         }
-        try {
-            BigDecimal v1 = new BigDecimal(left.toString());
-            BigDecimal v2 = new BigDecimal(right.toString());
-            return v1.compareTo(v2);
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return -1;
+        BigDecimal v1 = new BigDecimal(left.toString());
+        BigDecimal v2 = new BigDecimal(right.toString());
+        return v1.compareTo(v2);
     }
 
     @Override
@@ -675,15 +792,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
         String tableName = tableNameStack.peek();
         if(delColumnExprContext != null){
-            try {
-                Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
-                if(writeModel){
-                    getTableContextNewDocument(tableName).delete(jsonPath);
-                }else{
-                    getTableContextDocument(tableName).delete(jsonPath);
-                }
-            }catch (PathNotFoundException e){
-            }
+            delCol(tableName,jsonPath);
             return null;
         }
         Object value = null;
@@ -877,13 +986,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
 
-//    ====================== select ============================
+    //region    ====================== select start ============================
 
     @Override
     public Object visitSelectStatement(SqlParser.SelectStatementContext ctx) {
         SqlParser.SelectListContext selectListContext = ctx.selectList();
         SqlParser.TableNameContext tableNameContext = ctx.tableName();
-//        TerminalNode tableNameContext = ctx.ONEID();
         SqlParser.ExpressionContext expression = ctx.expression();
         String tableName = tableNameContext.getText();
         tableNameStack.push(tableName);
@@ -896,6 +1004,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             return null;
         }
         Object v = visitSelectList(selectListContext);
+        tableNameStack.pop();
         return v == null ? "{}":v.toString();
     }
 
@@ -917,6 +1026,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         for (SqlParser.SelectItemContext selectItemContext : selectItemContexts) {
             SqlParser.StarLableContext starLableContext = selectItemContext.starLable();
             SqlParser.RelationalExprContext relationalExprContext = selectItemContext.relationalExpr();
+            SqlParser.CaseExprContext caseExprContext = selectItemContext.caseExpr();
             TerminalNode oneId = selectItemContext.ID();
             if(ObjectUtil.isNotEmpty(starLableContext)){
                 Object v1 = visitStarLable(starLableContext);
@@ -930,6 +1040,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             String colName;
             if(ObjectUtil.isNotEmpty(relationalExprContext)){
                 Object tempResult = visit(relationalExprContext);
+                if(Objects.isNull(tempResult)){
+                    continue;
+                }
                 if(ObjectUtil.isNotEmpty(oneId)){
                     colName = oneId.getText();
                 }else{
@@ -945,13 +1058,252 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 result.put(colName,tempResult);
             }
 
+            if(ObjectUtil.isNotEmpty(caseExprContext)){
+                Object tempResult = visitCaseExpr(caseExprContext);
+                if(Objects.isNull(tempResult)){
+                    continue;
+                }
+                if(ObjectUtil.isNotEmpty(oneId)){
+                    colName = oneId.getText();
+                }else{
+                    String tempColName = caseExprContext.getText();
+                    if (colNamePattern.matcher(tempColName).find()) {
+                        colName = tempColName;
+                    }else{
+                        colName = genColName + genColNameIndex;
+                        genColNameIndex += 1;
+                    }
+
+                }
+                result.put(colName,tempResult);
+            }
+
         }
         return JsonPath.parse(result).jsonString();
     }
 
+    @Override
+    public Object visitInSubqueryExpression(SqlParser.InSubqueryExpressionContext ctx) {
+        List<SqlParser.ColumnNameContext> columnNameContexts = ctx.columnName();
+        SqlParser.NotLableContext notLableContext = ctx.notLable();
+        SqlParser.SelectStatementContext selectStatementContext = ctx.selectStatement();
+        SqlParser.AsLableContext asLable = ctx.asLable();
+        List<SqlParser.LiteralValueContext> literalValueContexts = ctx.literalValue();
 
-    //    ====================== select ============================
+        int literalValueBeginIndex = 0;
+        SqlParser.ColumnNameContext selectAsColumnNameContext = null;
+        Object v1 = null;
+        if(ObjectUtil.isEmpty(asLable) ){
+            // asLable 为空，则仅有一个columnName
+            if(ObjectUtil.isNotEmpty(columnNameContexts)){
+                SqlParser.ColumnNameContext columnNameContext = columnNameContexts.get(0);
+                Object jsonPath = visitColumnName(columnNameContext);
+                v1 = read(jsonPath.toString());
+            }else{
+                SqlParser.LiteralValueContext literalValueContext = literalValueContexts.get(0);
+                v1 = visitLiteralValue(literalValueContext);
+                literalValueBeginIndex = 1;
+            }
 
+        }else {
+            // asLable 为空，若仅有一个columnName，则一定是select的，否则就会有两个，其中第二个是select的
+            if (columnNameContexts.size() == 1) {
+                SqlParser.LiteralValueContext literalValueContext = literalValueContexts.get(0);
+                v1 = visitLiteralValue(literalValueContext);
+                literalValueBeginIndex = 1;
+                selectAsColumnNameContext = columnNameContexts.get(0);
+            }else{
+                SqlParser.ColumnNameContext columnNameContext = columnNameContexts.get(0);
+                Object jsonPath = visitColumnName(columnNameContext);
+                v1 = read(jsonPath.toString());
+                selectAsColumnNameContext = columnNameContexts.get(1);
+            }
+
+        }
+
+        List<Object> inValueList = new ArrayList<>();
+        if(ObjectUtil.isNotEmpty(literalValueContexts)){
+            for (; literalValueBeginIndex < literalValueContexts.size(); literalValueBeginIndex++) {
+                SqlParser.LiteralValueContext literalValueContext = literalValueContexts.get(literalValueBeginIndex);
+                Object o = visitLiteralValue(literalValueContext);
+                inValueList.add(o);
+            }
+        }
+
+        if(ObjectUtil.isNotEmpty(selectStatementContext)){
+            // asLable 为空，不会进到这里
+            Object o = visitSelectStatement(selectStatementContext);
+            if(ObjectUtil.isNotEmpty(o)){
+                String v = o.toString();
+                try {
+                    Object read = JsonPath.parse(v).read(selectAsColumnNameContext.getText());
+                    if(read instanceof List){
+                        List tempV = (List)read;
+                        if(ObjectUtil.isNotEmpty(tempV)){
+                            inValueList.addAll(tempV);
+                        }
+                    }else{
+                        inValueList.add(read);
+                    }
+                }catch (Exception e){
+
+                }
+
+            }
+        }
+
+        for (Object v : inValueList) {
+            int i = compareValue(v1, v);
+            if(ObjectUtil.isNotEmpty(notLableContext)){
+                if(i==0){
+                    return false;
+                }
+            }else{
+                if(i==0){
+                    return true;
+                }
+            }
+        }
+        return ObjectUtil.isNotEmpty(notLableContext);
+    }
+
+    @Override
+    public Object visitExistsSubqueryExpression(SqlParser.ExistsSubqueryExpressionContext ctx) {
+        SqlParser.SelectStatementContext selectStatementContext = ctx.selectStatement();
+        SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
+        SqlParser.NotLableContext notLableContext = ctx.notLable();
+        Object o = visitSelectStatement(selectStatementContext);
+        Object result = null;
+        if(ObjectUtil.isNotEmpty(o)){
+            String v = o.toString();
+            try {
+                Object jsonPath = visitColumnName(columnNameContext);
+                result = JsonPath.parse(v).read(jsonPath.toString());
+            }catch (Exception e){
+            }
+        }
+        if(ObjectUtil.isNotEmpty(notLableContext)){
+            return Objects.isNull(result);
+        }
+        return Objects.nonNull(result);
+    }
+
+    @Override
+    public Object visitBetweenExpression(SqlParser.BetweenExpressionContext ctx) {
+        SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
+        SqlParser.LiteralValueContext literalValueContext = ctx.literalValue();
+        SqlParser.NotLableContext notLableContext = ctx.notLable();
+        List<SqlParser.RelationalExprContext> relationalExprContexts = ctx.relationalExpr();
+        SqlParser.RelationalExprContext relationalExprContext0 = relationalExprContexts.get(0);
+        SqlParser.RelationalExprContext relationalExprContext1 = relationalExprContexts.get(1);
+        Object v1 = null;
+        if(ObjectUtil.isNotEmpty(columnNameContext)){
+            Object jsonPath = visitColumnName(columnNameContext);
+            v1 = read(jsonPath.toString());
+        }else{
+            v1 = visitLiteralValue(literalValueContext);
+        }
+
+        Object v2 = visit(relationalExprContext0);
+        Object v3 = visit(relationalExprContext1);
+
+        int flag0 = compareValue(v1, v2);
+        int flag1 = compareValue(v1, v3);
+        if(ObjectUtil.isNotEmpty(notLableContext)){
+            if (flag0 < 0 || flag1 > 0) {
+                return true;
+            }
+            return false;
+        }else{
+            if (flag0 >= 0 && flag1 <= 0) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    @Override
+    public Object visitLikeExpression(SqlParser.LikeExpressionContext ctx) {
+        SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
+        SqlParser.LiteralValueContext literalValueContext = ctx.literalValue();
+        SqlParser.NotLableContext notLableContext = ctx.notLable();
+        TerminalNode stringValueContext = ctx.STRING();
+        Object v1 = null;
+        if(ObjectUtil.isNotEmpty(columnNameContext)){
+            Object jsonPath = visitColumnName(columnNameContext);
+            v1 = read(jsonPath.toString());
+        }else{
+            v1 = visitLiteralValue(literalValueContext);
+        }
+        if (Objects.isNull(v1)) {
+            return false;
+        }
+        String text = stringValueContext.getText();
+        Object reg = text.substring(1,text.length() - 1);
+        Pattern valuePattern = Pattern.compile(reg.toString());
+        if(ObjectUtil.isNotEmpty(notLableContext)){
+            if (valuePattern.matcher(v1.toString()).find()) {
+                return false;
+            }
+            return true;
+        }else{
+            if (valuePattern.matcher(v1.toString()).find()) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+
+
+    //endregion ====================== select end ============================
+
+    //region   ====================== delete start ============================
+
+    @Override
+    public Object visitDeleteStatement(SqlParser.DeleteStatementContext ctx) {
+        SqlParser.TableNameContext tableNameContext = ctx.tableName();
+        SqlParser.DelClauseContext delClauseContext = ctx.delClause();
+        SqlParser.ExpressionContext expression = ctx.expression();
+        if(ObjectUtil.isNotEmpty(tableNameContext)){
+            String tableName = tableNameContext.getText();
+            tableNameStack.push(tableName);
+        }else{
+            tableNameStack.push(MAIN_TABLE_NAME);
+        }
+        boolean condition = true;
+        if(ObjectUtil.isNotEmpty(expression)){
+            condition = (Boolean) visitExpression(expression);
+        }
+
+        if(!condition){
+            tableNameStack.pop();
+            return 0;
+        }
+        Integer flag = (Integer)visitDelClause(delClauseContext);
+        tableNameStack.pop();
+        return flag;
+    }
+
+    @Override
+    public Object visitDelClause(SqlParser.DelClauseContext ctx) {
+        List<SqlParser.ColumnNameContext> columnNameContexts = ctx.columnName();
+        String tableName = tableNameStack.peek();
+        for (SqlParser.ColumnNameContext columnNameContext : columnNameContexts) {
+            Object jsonPath = visitColumnName(columnNameContext);
+            delCol(tableName,jsonPath.toString());
+        }
+        return 1;
+    }
+
+    //endregion ====================== delete end  ============================
+
+
+    @Override
+    public Object visitStringValue(SqlParser.StringValueContext ctx) {
+        String text = ctx.getText();
+        return text.substring(1,text.length() -1);
+    }
 
     private Object getMacro(MacroEnum macroEnum) {
         String tableName = tableNameStack.peek();

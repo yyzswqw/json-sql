@@ -20,7 +20,6 @@ fragment UNDERSCORE : '_';
 
 CUSTOMID : '$' (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* ;
 ID : (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* | ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*) ('.' ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*))*;
-//ONEID : (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* ;
 STRING : ('"' (~('\\' | '"') | '\\' .)* '"') | ('\'' (~('\\' | '\'') | '\\' .)* '\'');
 INT : '-'? DIGIT+;
 DOUBLE : '-'? ([0-9]+ '.' [0-9]* | '.' [0-9]+);
@@ -28,6 +27,7 @@ DOUBLE : '-'? ([0-9]+ '.' [0-9]* | '.' [0-9]+);
 WS : [ \t\r\n]+ -> skip;
 
 update: ('UPDATE') | ('update') ;
+delete: ('DELETE') | ('delete') ;
 set: 'SET' | 'set';
 where: 'WHERE' | 'where';
 nullLable: 'NULL' | 'null';
@@ -42,6 +42,9 @@ endLable: 'END' | 'end';
 whenLable: 'WHEN' | 'when';
 thenLable: 'THEN' | 'then';
 elseLable: 'ELSE' | 'else';
+existsLable: 'EXISTS' | 'exists';
+betweenLable: 'BETWEEN' | 'between';
+likeLable: 'LIKE' | 'like';
 
 selectLable: 'SELECT' | 'select';
 fromLable: 'FROM' | 'from';
@@ -54,6 +57,9 @@ jsonPathFunction: 'jsonPath(' STRING ')';
 
 
 // 语法规则
+sql: updateStatement | selectStatement | deleteStatement;
+deleteStatement : (delete tableName)? delClause (where expression)?;
+delClause : columnName (',' columnName)* ;
 updateSql: updateStatement;
 updateStatement : (update tableName)? set setClause (where expression)?;
 setClause : setExpression (',' setExpression)* ;
@@ -62,7 +68,6 @@ setExpression : columnName '=' (relationalExpr | caseExpr | delColumnExpr);
 tableName : ID;
 columnName : ID | jsonPathFunction;
 literalValue : STRING | doubleValue | intValue | nullLable | boolLable;
-stringValue: ('"' (~('\\' | '"') | '\\' .)* '"') | ('\'' (~('\\' | '\'') | '\\' .)* '\'');
 intValue : INT;
 doubleValue : DOUBLE;
 
@@ -76,7 +81,7 @@ condition : expression;
 expression : orExpr | '(' expression ')';
 orExpr : andExpr (orLable andExpr)* | '(' expression ')';
 andExpr : equalityExpr (andLable equalityExpr)* | '(' expression ')' ;
-equalityExpr : (relationalExpr comparisonOperator relationalExpr) | boolLable | isNullExpression | '(' expression ')';
+equalityExpr : (relationalExpr comparisonOperator relationalExpr) | boolLable | isNullExpression | inSubqueryExpression | existsSubqueryExpression | betweenExpression | likeExpression | '(' expression ')';
 comparisonOperator : '=' | '<>' | '!=' | '<' | '<=' | '>' | '>=';
 
 relationalExpr: relationalExpr op=('*'|'/'|'%') relationalExpr           # MulDiv
@@ -91,36 +96,21 @@ relationalExpr: relationalExpr op=('*'|'/'|'%') relationalExpr           # MulDi
 
 primaryExpr : '(' expression ')' | literalValue | columnName;
 
-// 以下是新增的规则
-
-// IN子句
-inSubqueryExpression : columnName (notLable)? inLable '(' selectStatement ')';
+// IN子句 eg: ab in (select * from table where 1=1 as '$.a[0].book')
+inSubqueryExpression : (columnName | literalValue) (notLable)? inLable '('  ((selectStatement asLable columnName ) | (literalValue (',' literalValue)*) )')';
 
 // EXISTS子句
-existsSubqueryExpression : 'EXISTS' '(' selectStatement ')';
+existsSubqueryExpression : (notLable)? existsLable '(' selectStatement asLable columnName ')';
 
 // BETWEEN子句
-//betweenExpression : columnName ('NOT')? 'BETWEEN' additiveExpr 'AND' additiveExpr;
+betweenExpression : (columnName | literalValue) (notLable)? betweenLable relationalExpr andLable relationalExpr;
 
 // LIKE子句
-likeExpression : columnName (notLable)? 'LIKE' stringValue;
+likeExpression : (columnName | literalValue) (notLable)? likeLable STRING;
 
 // IS NULL子句
 isNullExpression : columnName isLable (notLable)? nullLable;
 
 selectStatement : selectLable selectList fromLable tableName (where expression)?;
 selectList : selectItem (',' selectItem)*;
-selectItem : relationalExpr (asLable ID)?  | starLable ;
-//selectItem : relationalExpr (asLable tableName)? | starLable ;
-
-
-
-
-
-
-
-
-
-
-
-
+selectItem : (relationalExpr | caseExpr) (asLable ID)?  | starLable ;
