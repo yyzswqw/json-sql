@@ -13,6 +13,7 @@ import json.sql.enums.MacroEnum;
 import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
 import json.sql.udf.CustomMethod;
+import json.sql.util.CompareUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.CharStreams;
@@ -41,25 +42,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     private static final Pattern colNamePattern = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*$");
 
-    static{
-        try {
-            Method a = CustomMethod.class.getMethod("a", Number.class, Object.class);
-            Method b = CustomMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
-            Method c = CustomMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
-            Method d = CustomMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
-
-            registerFunction("a", a,Number.class, Object.class);
-            registerFunction("b", b,BigDecimal.class, BigDecimal.class);
-            registerFunction("c", c,BigDecimal.class, BigDecimal.class);
-            registerFunction("d", d);
-
-            registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
-            registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
-
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    // region ======================== api start ===================================
 
     public static void registerFunction(String functionName,Method method,Class<?> ... argsType){
         if(argsType == null || argsType.length == 0){
@@ -112,92 +95,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
     }
 
-    private static String jsonStr = "{\n" +
-            "\t\"p3\": \"reference\",\n" +
-            "\t\"p4\": 5,\n" +
-            "\t\"p1\": \"aa\",\n" +
-            "\t\"store\": {\n" +
-            "\t\t\"book\": [{\n" +
-            "\t\t\t\t\"category\": \"reference\",\n" +
-            "\t\t\t\t\"author\": \"Nigel Rees\",\n" +
-            "\t\t\t\t\"title\": \"Sayings of the Century\",\n" +
-            "\t\t\t\t\"price\": 8.95\n" +
-            "\t\t\t}, {\n" +
-            "\t\t\t\t\"category\": \"fiction\",\n" +
-            "\t\t\t\t\"author\": \"Evelyn Waugh\",\n" +
-            "\t\t\t\t\"title\": \"Sword of Honour\",\n" +
-            "\t\t\t\t\"price\": 12.99\n" +
-            "\t\t\t}, {\n" +
-            "\t\t\t\t\"category\": \"fiction\",\n" +
-            "\t\t\t\t\"author\": \"Herman Melville\",\n" +
-            "\t\t\t\t\"title\": \"Moby Dick\",\n" +
-            "\t\t\t\t\"isbn\": \"0-553-21311-3\",\n" +
-            "\t\t\t\t\"price\": 8.99\n" +
-            "\t\t\t}, {\n" +
-            "\t\t\t\t\"category\": \"fiction\",\n" +
-            "\t\t\t\t\"author\": \"J. R. R. Tolkien\",\n" +
-            "\t\t\t\t\"title\": \"The Lord of the Rings\",\n" +
-            "\t\t\t\t\"isbn\": \"0-395-19395-8\",\n" +
-            "\t\t\t\t\"price\": 22.99\n" +
-            "\t\t\t}\n" +
-            "\t\t],\n" +
-            "\t\t\"bicycle\": {\n" +
-            "\t\t\t\"color\": \"red\",\n" +
-            "\t\t\t\"price\": 19.95\n" +
-            "\t\t}\n" +
-            "\t}\n" +
-            "}";
-
-    public static void main(String[] args) {
-//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),age = jsonPath('age')%4 + age";
-//        String sql = "set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
-//        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
-//        String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['category']\"),age = jsonPath(\"age\")%4 + age";
-//        String sql = "update a1 SET age = jsonPath('$.age')%4 + age,name = 1";
-//        String sql = "update a1 SET name = 'a',age = 31 where name = 'a1'";
-//        String sql = "update a1 SET name = 'a',age = 31 where true";
-//        String sql = "update a1 SET name = 'a',age = 31 where aa IS NOT NULL";
-//        String sql = "update a1 SET name = 'a',age = 31,as=jsonPath('$..book[?(@.isbn)]') where aa IS NULL";
-//        String sql = "update a1 SET name = 'a',age = 31,as=jsonPath('$..*') where aa IS NULL";
-//        String sql = "update a1 SET name = 'a',age = 31,as=jsonPath('$..book[?(@.price<10)]') where aa IS NULL";
-//        String sql = "update a1 SET name = 'a',age = 31,name=false where aa IS NULL";
-//        String sql = "update a1 SET name = 'a',age = 31.32,name=null where aa IS NULL";
-//        String sql = "update a1 SET name = 'a',age = 31.32,name=null where 1.1 >= 1.1";
-//        String sql = "update a1 SET name = 'a',age = 1,a1 = " +
-//                "case when age = 1 then 'a' " +
-//                "when age < 10 then true " +
-//                "when age <20 and name = 'a' then 5.9 " +
-//                "when dd is not null then null " +
-////                "else toJson('{\"a\":23,\"b\":\"ab\"}') end " +
-//                "else toJsonByPath('$..book[:3][\"category\"]') end " +
-//                " where true = true";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
-//        String sql = "SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
-//        String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
-//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 in (select 1 as abc from b1 where 1=1 as abc)";
-//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 not in (1,2,3,22.99)";
-//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where not exists (select 1 from b1 where 1!=1 as _c0)";
-//        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 3 between 1+1 and p4*2";
-//        String sql = "select case when 1>2 then 1 end as c,1 as b ,jsonPath('$..book[0][\"category\"]') as c from a1 where p3 like '^refer'";
-//        String sql = "select case when 1>2 then 1 end as c from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
-//        String sql = "select p1,p2,p3,p4 + 1 as aA1,p5,toJson('{\"a\":1}') from b1";
-//        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 != 5";
-//        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where 51 in (select p4 from b1 as p4)";
-        String sql = "select * from a1";
-
-        json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
-        json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
-        ParseTree tree = parser.sql();
-        JsonSqlVisitor.registerTable("a1", jsonStr);
-        JsonSqlVisitor.registerTable("b1", jsonStr);
-        JsonSqlVisitor.setTableConfig("a1", TableConfig.WRITE_MODEL,true);
-        String exec = JsonSqlVisitor.exec(tree);
-        System.out.println("最终结果:"+exec);
-        System.out.println("最终结果 table a1 :"+getResult("a1"));
-        System.out.println("最终结果 table b1 :"+getResult("b1"));
-    }
-
     public static String exec(ParseTree tree){
         return exec(tree,null,null);
     }
@@ -220,9 +117,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         Object visit = visitor.visit(tree);
         if(ObjectUtil.isNotEmpty(visit)){
-            return visit == null ? "{}":visit.toString();
-        }
-        if(tree instanceof SqlParser.SelectStatementContext){
             return visit == null ? "{}":visit.toString();
         }
         return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
@@ -361,7 +255,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return 0;
     }
 
+    public Object read(String jsonPath){
+        try {
+            String tableName = tableNameStack.peek();
+            return getTableContextDocument(tableName).read(jsonPath);
+        }catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
 
+// endregion ======================== api end ===================================
 
     @Override
     public Object visitSql(SqlParser.SqlContext ctx) {
@@ -380,6 +284,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return null;
     }
 
+    // region ======================== update start ===================================
     @Override
     public Object visitUpdateStatement(SqlParser.UpdateStatementContext ctx) {
         SqlParser.TableNameContext tableNameContext = ctx.tableName();
@@ -417,6 +322,70 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             return 1;
         }
     }
+
+    @Override
+    public Object visitSetClause(SqlParser.SetClauseContext ctx) {
+        List<SqlParser.SetExpressionContext> setExpressionContexts = ctx.setExpression();
+
+        for (SqlParser.SetExpressionContext setExpression : setExpressionContexts) {
+            visit(setExpression);
+        }
+        return null;
+    }
+
+    @Override
+    public Object visitSetExpression(SqlParser.SetExpressionContext ctx) {
+        SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
+        String jsonPath = (String)visitColumnName(columnNameContext);
+        SqlParser.RelationalExprContext relationalExprContext = ctx.relationalExpr();
+        SqlParser.CaseExprContext caseExprContext = ctx.caseExpr();
+        SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
+        String tableName = tableNameStack.peek();
+        if(delColumnExprContext != null){
+            delCol(tableName,jsonPath);
+            return null;
+        }
+        Object value = null;
+        if(relationalExprContext != null){
+            value = visit(relationalExprContext);
+        }
+        if(caseExprContext != null){
+            value = visitCaseExpr(caseExprContext);
+        }
+
+        try {
+            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            if(writeModel){
+                getTableContextNewDocument(tableName).set(jsonPath, value);
+            }else{
+                getTableContextDocument(tableName).set(jsonPath, value);
+            }
+        }catch (PathNotFoundException e){
+            // 没有这个节点，新增
+            int i = jsonPath.lastIndexOf(".");
+            String firstPath = null;
+            String namePath = null;
+            if(i>0){
+                firstPath = jsonPath.substring(0,i);
+                namePath = jsonPath.substring(i+1);
+            }else{
+                firstPath = "$";
+                namePath = jsonPath;
+            }
+            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            if(writeModel){
+                getTableContextNewDocument(tableName).put(firstPath,namePath, value);
+            }else{
+                getTableContextDocument(tableName).put(firstPath,namePath, value);
+            }
+        }
+        return null;
+    }
+
+    // endregion ======================== update end ===================================
+
+
+    // region ======================== expression start ===================================
 
     @Override
     public Object visitExpression(SqlParser.ExpressionContext ctx) {
@@ -461,16 +430,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             return visitExpression(expression);
         }
         return true;
-    }
-
-    @Override
-    public Object visitJsonPathFunc(SqlParser.JsonPathFuncContext ctx) {
-        SqlParser.JsonPathFunctionContext jsonPathContext = ctx.jsonPathFunction();
-        if(jsonPathContext != null){
-            String jsonPath = jsonPathContext.getChild(1).getChild(1).getText();
-            return read(jsonPath);
-        }
-        return null;
     }
 
     @Override
@@ -533,37 +492,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitToJsonByPathFunction(SqlParser.ToJsonByPathFunctionContext ctx) {
-        TerminalNode string = ctx.STRING();
-        if(string != null){
-            try {
-                Object read = read(string.getText().substring(1, string.getText().length() - 1));
-                DocumentContext parse = JsonPath.parse(read);
-                return parse.json();
-            }catch (Exception e){
-                e.printStackTrace();
-                return null;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Object visitToJsonFunction(SqlParser.ToJsonFunctionContext ctx) {
-        TerminalNode string = ctx.STRING();
-        if(string != null){
-            try {
-                DocumentContext parse = JsonPath.parse(string.getText().substring(1,string.getText().length() - 1));
-                return parse.json();
-            }catch (Exception e){
-                e.printStackTrace();
-                return null;
-            }
-        }
-        return null;
-    }
-
-    @Override
     public Object visitEqualityExpr(SqlParser.EqualityExprContext ctx) {
         SqlParser.IsNullExpressionContext nullExpression = ctx.isNullExpression();
         if (nullExpression != null) {
@@ -586,7 +514,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             SqlParser.RelationalExprContext right = relationalExprContexts.get(1);
             Object v2 = visit(right);
             String operator = comparisonOperatorContext.getText();
-            return compareValues(v1,operator,v2);
+            return CompareUtil.compareValues(v1,operator,v2);
         }
         SqlParser.ExpressionContext expression = ctx.expression();
         if (expression != null) {
@@ -611,110 +539,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return false;
     }
 
-    private boolean compareValues(Object left, String operator, Object right) {
-        if (left == null || right == null) {
-            return false;
-        }
-        switch(operator) {
-            case "=":
-                return compareValue(left,right) == 0;
-            case "<>":
-            case "!=":
-                return compareValue(left,right) != 0;
-            case ">":
-                return compareValue(left,right) > 0;
-            case ">=":
-                return compareValue(left,right) >= 0;
-            case "<":
-                return compareValue(left,right) < 0;
-            case "<=":
-                return compareValue(left,right) <= 0;
-            default:
-                return false;
-        }
-    }
 
-    private int compareValue(Object left, Object right) {
-        // 先尝试时间比较
-        try {
-            // 是时间类型或者是字符串类型，才尝试使用时间比较
-            if((left instanceof Date || left instanceof CharSequence)
-             && (right instanceof Date || right instanceof CharSequence)){
-                Date d1 = Convert.convert(Date.class, left);
-                Date d2 = Convert.convert(Date.class, right);
-                return d1.compareTo(d2);
-            }
-            throw new RuntimeException("时间类型不正确，不能比较");
-        }catch (Exception e){}
-        // 时间不能比较，则尝试数字比较
-        try {
-            // 其中一个是数字，才尝试比较
-            if(left instanceof Number || right instanceof Number){
-                return compareNumbers(left,right);
-            }
-            throw new RuntimeException("number类型不正确，不能比较");
-        }catch (Exception e){}
-        // 数字不能比较，则尝试boolean比较
-        try {
-            // 两个都能转成boolean，才比较
-            Boolean b1 = null;
-            Boolean b2 = null;
-            if (Boolean.TRUE.toString().equalsIgnoreCase(left.toString()) || Boolean.FALSE.toString().equalsIgnoreCase(left.toString())) {
-                b1 = Boolean.parseBoolean(left.toString());
-            }
-            if (Boolean.TRUE.toString().equalsIgnoreCase(right.toString()) || Boolean.FALSE.toString().equalsIgnoreCase(right.toString())) {
-                b2 = Boolean.parseBoolean(right.toString());
-            }
-            if(ObjectUtil.hasEmpty(b1,b2)){
-                throw new RuntimeException("不可比较");
-            }
-            if(Boolean.TRUE.equals(b1) && Boolean.TRUE.equals(b2)){
-                return 0;
-            }
-            if(Boolean.TRUE.equals(b1) && Boolean.FALSE.equals(b2)){
-                return 1;
-            }
-            if(Boolean.FALSE.equals(b1) && Boolean.TRUE.equals(b2)){
-                return -1;
-            }
-            if(Boolean.FALSE.equals(b1) && Boolean.FALSE.equals(b2)){
-                return 0;
-            }
-        }catch (Exception e){}
-        // 还不能比较，按照字符串比较
-        try {
-            String s1 = left.toString();
-            String s2 = right.toString();
-            return s1.compareTo(s2);
-        }catch (Exception e){}
-        return -1;
-    }
-
-    private int compareNumbers(Object left, Object right) throws Exception {
-        if (left instanceof Integer && right instanceof Integer) {
-            return ((Integer) left).compareTo((Integer) right);
-        }
-
-        if (left instanceof Double && right instanceof Double) {
-            return ((Double) left).compareTo((Double) right);
-        }
-
-        if (left instanceof Integer && right instanceof Double) {
-            return Double.compare((Integer) left, (Double) right);
-        }
-
-        if (left instanceof Double && right instanceof Integer) {
-            return Double.compare((Double) left, (Integer) right);
-        }
-        if (left instanceof BigDecimal && right instanceof BigDecimal) {
-            BigDecimal v1 = (BigDecimal)left;
-            BigDecimal v2 = (BigDecimal)right;
-            return v1.compareTo(v2);
-        }
-        BigDecimal v1 = new BigDecimal(left.toString());
-        BigDecimal v2 = new BigDecimal(right.toString());
-        return v1.compareTo(v2);
-    }
 
     @Override
     public Object visitIsNullExpression(SqlParser.IsNullExpressionContext ctx) {
@@ -774,65 +599,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitSetClause(SqlParser.SetClauseContext ctx) {
-        List<SqlParser.SetExpressionContext> setExpressionContexts = ctx.setExpression();
-
-        for (SqlParser.SetExpressionContext setExpression : setExpressionContexts) {
-            visit(setExpression);
-        }
-        return null;
-    }
-
-    @Override
-    public Object visitSetExpression(SqlParser.SetExpressionContext ctx) {
-        SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
-        String jsonPath = (String)visitColumnName(columnNameContext);
-        SqlParser.RelationalExprContext relationalExprContext = ctx.relationalExpr();
-        SqlParser.CaseExprContext caseExprContext = ctx.caseExpr();
-        SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
-        String tableName = tableNameStack.peek();
-        if(delColumnExprContext != null){
-            delCol(tableName,jsonPath);
-            return null;
-        }
-        Object value = null;
-        if(relationalExprContext != null){
-            value = visit(relationalExprContext);
-        }
-        if(caseExprContext != null){
-            value = visitCaseExpr(caseExprContext);
-        }
-
-        try {
-            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
-            if(writeModel){
-                getTableContextNewDocument(tableName).set(jsonPath, value);
-            }else{
-                getTableContextDocument(tableName).set(jsonPath, value);
-            }
-        }catch (PathNotFoundException e){
-            // 没有这个节点，新增
-            int i = jsonPath.lastIndexOf(".");
-            String firstPath = null;
-            String namePath = null;
-            if(i>0){
-                firstPath = jsonPath.substring(0,i);
-                namePath = jsonPath.substring(i+1);
-            }else{
-                firstPath = "$";
-                namePath = jsonPath;
-            }
-            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
-            if(writeModel){
-                getTableContextNewDocument(tableName).put(firstPath,namePath, value);
-            }else{
-                getTableContextDocument(tableName).put(firstPath,namePath, value);
-            }
-        }
-        return null;
-    }
-
-    @Override
     public Object visitCaseExpr(SqlParser.CaseExprContext ctx) {
         List<SqlParser.WhenBranchContext> whenBranchContexts = ctx.whenBranch();
         for (SqlParser.WhenBranchContext whenBranchContext : whenBranchContexts) {
@@ -870,57 +636,48 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return Boolean.parseBoolean(v1==null?"false":v1.toString());
     }
 
+    // endregion ======================== expression end ===================================
+
+    // region ======================== function start ===================================
+
     @Override
-    public Object visitLiteralValue(SqlParser.LiteralValueContext ctx) {
-        TerminalNode string = ctx.STRING();
-        if (string != null) {
-            String text = string.getText();
-            return text.substring(1, text.length() - 1);
-        }
-        final SqlParser.BoolLableContext boolLableContext = ctx.boolLable();
-        if (boolLableContext != null) {
-            String text = boolLableContext.getText();
-            return Boolean.parseBoolean(text);
-        }
-
-        SqlParser.IntValueContext intValueContext = ctx.intValue();
-        if (intValueContext != null) {
-            return new BigDecimal(intValueContext.getText());
-        }
-
-        SqlParser.DoubleValueContext doubleValueContext = ctx.doubleValue();
-        if (doubleValueContext != null) {
-            return new BigDecimal(doubleValueContext.getText());
-        }
-
-        SqlParser.NullLableContext nullLableContext = ctx.nullLable();
-        if (nullLableContext != null) {
-            return null;
+    public Object visitJsonPathFunc(SqlParser.JsonPathFuncContext ctx) {
+        SqlParser.JsonPathFunctionContext jsonPathContext = ctx.jsonPathFunction();
+        if(jsonPathContext != null){
+            String jsonPath = jsonPathContext.getChild(1).getChild(1).getText();
+            return read(jsonPath);
         }
         return null;
     }
 
     @Override
-    public Object visitBoolLable(SqlParser.BoolLableContext ctx) {
-        String text = ctx.getText();
-        return Boolean.parseBoolean(text);
+    public Object visitToJsonByPathFunction(SqlParser.ToJsonByPathFunctionContext ctx) {
+        TerminalNode string = ctx.STRING();
+        if(string != null){
+            try {
+                Object read = read(string.getText().substring(1, string.getText().length() - 1));
+                DocumentContext parse = JsonPath.parse(read);
+                return parse.json();
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return null;
     }
 
     @Override
-    public Object visitColumnName(SqlParser.ColumnNameContext ctx) {
-        TerminalNode id = ctx.ID();
-        if(id != null){
-            String columnName = id.getText();
-            String jsonPath = "$." + columnName;
-            return jsonPath;
+    public Object visitToJsonFunction(SqlParser.ToJsonFunctionContext ctx) {
+        TerminalNode string = ctx.STRING();
+        if(string != null){
+            try {
+                DocumentContext parse = JsonPath.parse(string.getText().substring(1,string.getText().length() - 1));
+                return parse.json();
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
         }
-        SqlParser.JsonPathFunctionContext jsonpath = ctx.jsonPathFunction();
-        if(jsonpath != null){
-            String text = jsonpath.getChild(1).getText();
-            text = text.substring(1,text.length()-1);
-            return text;
-        }
-
         return null;
     }
 
@@ -984,6 +741,71 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
         return result;
     }
+
+    // endregion ======================== function end ===================================
+
+    // region ======================== 字面量 start ===================================
+    @Override
+    public Object visitLiteralValue(SqlParser.LiteralValueContext ctx) {
+        TerminalNode string = ctx.STRING();
+        if (string != null) {
+            String text = string.getText();
+            return text.substring(1, text.length() - 1);
+        }
+        final SqlParser.BoolLableContext boolLableContext = ctx.boolLable();
+        if (boolLableContext != null) {
+            String text = boolLableContext.getText();
+            return Boolean.parseBoolean(text);
+        }
+
+        SqlParser.IntValueContext intValueContext = ctx.intValue();
+        if (intValueContext != null) {
+            return new BigDecimal(intValueContext.getText());
+        }
+
+        SqlParser.DoubleValueContext doubleValueContext = ctx.doubleValue();
+        if (doubleValueContext != null) {
+            return new BigDecimal(doubleValueContext.getText());
+        }
+
+        SqlParser.NullLableContext nullLableContext = ctx.nullLable();
+        if (nullLableContext != null) {
+            return null;
+        }
+        return null;
+    }
+
+    @Override
+    public Object visitBoolLable(SqlParser.BoolLableContext ctx) {
+        String text = ctx.getText();
+        return Boolean.parseBoolean(text);
+    }
+
+    @Override
+    public Object visitColumnName(SqlParser.ColumnNameContext ctx) {
+        TerminalNode id = ctx.ID();
+        if(id != null){
+            String columnName = id.getText();
+            String jsonPath = "$." + columnName;
+            return jsonPath;
+        }
+        SqlParser.JsonPathFunctionContext jsonpath = ctx.jsonPathFunction();
+        if(jsonpath != null){
+            String text = jsonpath.getChild(1).getText();
+            text = text.substring(1,text.length()-1);
+            return text;
+        }
+
+        return null;
+    }
+
+    @Override
+    public Object visitStringValue(SqlParser.StringValueContext ctx) {
+        String text = ctx.getText();
+        return text.substring(1,text.length() -1);
+    }
+
+    // endregion ======================== 字面量 end ===================================
 
 
     //region    ====================== select start ============================
@@ -1153,7 +975,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
 
         for (Object v : inValueList) {
-            int i = compareValue(v1, v);
+            int i = CompareUtil.compareValue(v1, v);
             if(ObjectUtil.isNotEmpty(notLableContext)){
                 if(i==0){
                     return false;
@@ -1207,8 +1029,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         Object v2 = visit(relationalExprContext0);
         Object v3 = visit(relationalExprContext1);
 
-        int flag0 = compareValue(v1, v2);
-        int flag1 = compareValue(v1, v3);
+        int flag0 = CompareUtil.compareValue(v1, v2);
+        int flag1 = CompareUtil.compareValue(v1, v3);
         if(ObjectUtil.isNotEmpty(notLableContext)){
             if (flag0 < 0 || flag1 > 0) {
                 return true;
@@ -1298,13 +1120,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     //endregion ====================== delete end  ============================
 
-
-    @Override
-    public Object visitStringValue(SqlParser.StringValueContext ctx) {
-        String text = ctx.getText();
-        return text.substring(1,text.length() -1);
-    }
-
+    //region   ====================== 宏定义 start ============================
     private Object getMacro(MacroEnum macroEnum) {
         String tableName = tableNameStack.peek();
         if(macroEnum != null){
@@ -1325,15 +1141,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return null;
     }
 
-    public Object read(String jsonPath){
-        try {
-            String tableName = tableNameStack.peek();
-            return getTableContextDocument(tableName).read(jsonPath);
-        }catch (Exception e){
-            e.printStackTrace();
-            return null;
-        }
-    }
+    //endregion   ====================== 宏定义 end ============================
 
     @Data
     public static class WhenThenResult implements Serializable {
@@ -1344,6 +1152,5 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
         private Object result;
     }
-
 
 }

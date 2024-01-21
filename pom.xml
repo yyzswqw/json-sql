@@ -4,16 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.example</groupId>
+    <groupId>coco.wqw</groupId>
     <artifactId>json-sql</artifactId>
     <version>1.0-SNAPSHOT</version>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.3</version>
-        <relativePath/>
-    </parent>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -22,13 +15,6 @@
     </properties>
 
     <dependencies>
-
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
 
         <dependency>
             <groupId>cn.hutool</groupId>
@@ -39,6 +25,13 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>1.18.26</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.30</version>
         </dependency>
 
         <dependency>
@@ -50,7 +43,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>16.0.1</version>
+            <version>32.0.0-android</version>
         </dependency>
 
 
