@@ -799,12 +799,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return null;
     }
 
-    @Override
-    public Object visitStringValue(SqlParser.StringValueContext ctx) {
-        String text = ctx.getText();
-        return text.substring(1,text.length() -1);
-    }
-
     // endregion ======================== 字面量 end ===================================
 
 
