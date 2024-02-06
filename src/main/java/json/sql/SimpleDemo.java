@@ -47,8 +47,9 @@ public class SimpleDemo {
             "}";
 
     public static void main(String[] args) {
-        registerCustomMethod();
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),age = jsonPath('age')%4 + age";
+        JsonSqlContext jsonSqlContext = new JsonSqlContext();
+        registerCustomMethod(jsonSqlContext);
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
 //        String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['category']\"),age = jsonPath(\"age\")%4 + age";
@@ -84,31 +85,31 @@ public class SimpleDemo {
 //        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 != 5";
 //        String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where 51 in (select p4 from b1 as p4)";
 //        String sql = "select * from a1";
-        JsonSqlContext.registerTable("a1", jsonStr);
-        JsonSqlContext.registerTable("b1", jsonStr);
-        JsonSqlContext.setTableConfig("a1", TableConfig.WRITE_MODEL,true);
-        String exec = JsonSqlContext.sql(sql);
+        jsonSqlContext.registerTable("a1", jsonStr);
+        jsonSqlContext.registerTable("b1", jsonStr);
+        jsonSqlContext.setTableConfig("a1", TableConfig.WRITE_MODEL,true);
+        String exec = jsonSqlContext.sql(sql);
         System.out.println("最终结果:"+exec);
         System.out.println();
-        System.out.println("最终结果 table a1 :"+JsonSqlContext.getTable("a1"));
+        System.out.println("最终结果 table a1 :"+jsonSqlContext.getTable("a1"));
         System.out.println();
-        System.out.println("最终结果 table b1 :"+JsonSqlContext.getTable("b1"));
+        System.out.println("最终结果 table b1 :"+jsonSqlContext.getTable("b1"));
     }
 
-    private static void registerCustomMethod() {
+    private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
         try {
             Method a = CustomMethod.class.getMethod("a", Number.class, Object.class);
             Method b = CustomMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
             Method c = CustomMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
             Method d = CustomMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
 
-            JsonSqlContext.registerFunction("a", a,Number.class, Object.class);
-            JsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
-            JsonSqlContext.registerFunction("c", c,BigDecimal.class, BigDecimal.class);
-            JsonSqlContext.registerFunction("d", d);
+            jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
+            jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
+            jsonSqlContext.registerFunction("c", c,BigDecimal.class, BigDecimal.class);
+            jsonSqlContext.registerFunction("d", d);
 
-            JsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
-            JsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+            jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+            jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);

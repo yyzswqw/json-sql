@@ -14,6 +14,7 @@ import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
 import json.sql.util.CompareUtil;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -28,48 +29,49 @@ import java.math.RoundingMode;
 import java.util.*;
 import java.util.regex.Pattern;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Slf4j
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
-    private static Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
-    private static Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
+    private Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
+    private Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
-    private static Map<String, TableContext> tableDataMap = Maps.newHashMap();
-    private static Stack<String> tableNameStack = new Stack<>();
+    private Map<String, TableContext> tableDataMap = Maps.newHashMap();
+    private Stack<String> tableNameStack = new Stack<>();
     private static final String MAIN_TABLE_NAME = "__$$main_table_name$$__";
 
     private static final Pattern colNamePattern = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*$");
 
     // region ======================== api start ===================================
 
-    public static void registerFunction(String functionName,Method method,Class<?> ... argsType){
+    public void registerFunction(String functionName,Method method,Class<?> ... argsType){
         if(argsType == null || argsType.length == 0){
-            methodTable.put(functionName,method,new ArrayList<>());
+            this.methodTable.put(functionName,method,new ArrayList<>());
         }else{
-            if (methodTable.containsRow(functionName)) {
+            if (this.methodTable.containsRow(functionName)) {
                 throw new RuntimeException("已存在 function : "+functionName);
             }
-            methodTable.put(functionName,method,Arrays.asList(argsType));
+            this.methodTable.put(functionName,method,Arrays.asList(argsType));
         }
     }
 
-    public static void registerMacro(String functionName,MacroEnum ... macros) {
+    public void registerMacro(String functionName,MacroEnum ... macros) {
         if(macros == null || macros.length == 0){
             return ;
         }else{
-            if (macroMap.containsKey(functionName)) {
+            if (this.macroMap.containsKey(functionName)) {
                 throw new RuntimeException("已存在 macro : "+functionName);
             }
-            macroMap.put(functionName,Arrays.asList(macros));
+            this.macroMap.put(functionName,Arrays.asList(macros));
         }
     }
 
-    public static void registerTable(String tableName,String json,Map<String,Object> config) {
+    public void registerTable(String tableName,String json,Map<String,Object> config) {
         if(ObjectUtil.hasEmpty(tableName,json)){
             throw new RuntimeException("表名或者json 数据不能为空");
         }
-        TableContext tableContext = tableDataMap.get(tableName);
+        TableContext tableContext = this.tableDataMap.get(tableName);
         if(ObjectUtil.isNotEmpty(tableContext)){
             throw new RuntimeException("table is exist");
         }
@@ -80,75 +82,73 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(ObjectUtil.isNotEmpty(config)){
             tableContext.getConfig().putAll(config);
         }
-        tableDataMap.put(tableName,tableContext);
+        this.tableDataMap.put(tableName,tableContext);
     }
 
-    public static void registerTable(String tableName,String json) {
-        registerTable(tableName,json,null);
+    public void registerTable(String tableName,String json) {
+        this.registerTable(tableName,json,null);
     }
 
-    public static void setTableConfig(String tableName,String key,Object value) {
-        Map<String, Object> tableContextConfig = getTableContextConfig(tableName);
+    public void setTableConfig(String tableName,String key,Object value) {
+        Map<String, Object> tableContextConfig = this.getTableContextConfig(tableName);
         if(tableContextConfig != null){
             tableContextConfig.put(key,value);
         }
     }
 
-    public static String exec(ParseTree tree){
-        return exec(tree,null,null);
+    public String exec(ParseTree tree){
+        return this.exec(tree,null,null);
     }
 
-    public static String exec(ParseTree tree,String jsonString){
-        return exec(tree,null,jsonString);
+    public String exec(ParseTree tree,String jsonString){
+        return this.exec(tree,null,jsonString);
     }
 
-    public static String exec(ParseTree tree,Boolean writeModel){
-        return exec(tree,writeModel,null);
+    public String exec(ParseTree tree,Boolean writeModel){
+        return this.exec(tree,writeModel,null);
     }
 
-    public static String exec(ParseTree tree,Boolean writeModel,String jsonString){
-        JsonSqlVisitor visitor = new JsonSqlVisitor();
+    public String exec(ParseTree tree,Boolean writeModel,String jsonString){
         if(ObjectUtil.isNotEmpty(jsonString)){
-            visitor.setJsonString(jsonString);
+            this.setJsonString(jsonString);
         }
         if(ObjectUtil.isNotEmpty(writeModel)){
-            JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
+            this.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
-        Object visit = visitor.visit(tree);
+        Object visit = this.visit(tree);
         if(ObjectUtil.isNotEmpty(visit)){
             return visit == null ? "{}":visit.toString();
         }
-        return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
+        return this.getResult(MAIN_TABLE_NAME);
     }
 
-    public static String exec(String sql){
-        return exec(sql,false,null);
+    public String exec(String sql){
+        return this.exec(sql,false,null);
     }
 
-    public static String exec(String sql,String jsonString){
-        return exec(sql,false,jsonString);
+    public String exec(String sql,String jsonString){
+        return this.exec(sql,false,jsonString);
     }
 
-    public static String exec(String sql,boolean writeModel){
-        return exec(sql,writeModel,null);
+    public String exec(String sql,boolean writeModel){
+        return this.exec(sql,writeModel,null);
     }
 
-    public static String exec(String sql,boolean writeModel,String jsonString){
+    public String exec(String sql,boolean writeModel,String jsonString){
         json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParseTree tree = parser.updateSql();
-        JsonSqlVisitor visitor = new JsonSqlVisitor();
         if(ObjectUtil.isNotEmpty(jsonString)){
-            visitor.setJsonString(jsonString);
+            this.setJsonString(jsonString);
         }
         if(ObjectUtil.isNotEmpty(writeModel)){
-            JsonSqlVisitor.setWriteModel(MAIN_TABLE_NAME,writeModel);
+            this.setWriteModel(MAIN_TABLE_NAME,writeModel);
         }
-        Object visit = visitor.visit(tree);
+        Object visit = this.visit(tree);
         if(ObjectUtil.isNotEmpty(visit)){
             return visit == null ? "{}":visit.toString();
         }
-        return JsonSqlVisitor.getResult(MAIN_TABLE_NAME);
+        return this.getResult(MAIN_TABLE_NAME);
     }
 
 
@@ -156,17 +156,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         registerTable(MAIN_TABLE_NAME,jsonString);
     }
 
-    public static void setWriteModel(String tableName,boolean writeModel) {
+    public void setWriteModel(String tableName,boolean writeModel) {
         TableContext tableContext = getTableContext(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
-            registerTable(tableName,"{}");
+            this.registerTable(tableName,"{}");
         }
         tableContext = getTableContext(tableName);
         tableContext.setConfig(TableConfig.WRITE_MODEL,writeModel);
     }
 
-    public static String getResult(String tableName){
-        TableContext tableContext = tableDataMap.get(tableName);
+    public String getResult(String tableName){
+        TableContext tableContext = this.tableDataMap.get(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
             return null;
         }
@@ -181,17 +181,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return tableContext.getOriginalJson();
     }
 
-    public static TableContext getTableContext(String tableName){
-        return tableDataMap.get(tableName);
+    public TableContext getTableContext(String tableName){
+        return this.tableDataMap.get(tableName);
     }
 
-    public static Map<String,Object> getTableContextConfig(String tableName){
-        TableContext tableContext = getTableContext(tableName);
+    public Map<String,Object> getTableContextConfig(String tableName){
+        TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getConfig();
     }
 
-    public static <T> T getTableContextConfig(String tableName,String key,Class<T> classType){
-        TableContext tableContext = getTableContext(tableName);
+    public <T> T getTableContextConfig(String tableName,String key,Class<T> classType){
+        TableContext tableContext = this.getTableContext(tableName);
         Map<String, Object> config = tableContext.getConfig();
         T v = null;
         if(ObjectUtil.isNotEmpty(config)){
@@ -204,8 +204,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return v;
     }
 
-    public static <T> T getTableContextConfig(String tableName,String key,Class<T> classType,T defaultValue){
-        TableContext tableContext = getTableContext(tableName);
+    public <T> T getTableContextConfig(String tableName,String key,Class<T> classType,T defaultValue){
+        TableContext tableContext = this.getTableContext(tableName);
         Map<String, Object> config = tableContext.getConfig();
         T v = null;
         if(ObjectUtil.isNotEmpty(config)){
@@ -221,32 +221,32 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return defaultValue;
     }
 
-    public static DocumentContext getTableContextDocument(String tableName){
-        TableContext tableContext = getTableContext(tableName);
+    public DocumentContext getTableContextDocument(String tableName){
+        TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getDocument();
     }
 
-    public static DocumentContext getTableContextNewDocument(String tableName){
-        TableContext tableContext = getTableContext(tableName);
+    public DocumentContext getTableContextNewDocument(String tableName){
+        TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getNewDocument();
     }
 
-    public static String getTableContextOriginalJson(String tableName){
-        TableContext tableContext = getTableContext(tableName);
+    public String getTableContextOriginalJson(String tableName){
+        TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getOriginalJson();
     }
 
-    public static int delCol(String tableName,String jsonPath){
-        TableContext tableContext = getTableContext(tableName);
+    public int delCol(String tableName,String jsonPath){
+        TableContext tableContext = this.getTableContext(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
             return 0;
         }
         try {
-            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
             if(writeModel){
-                getTableContextNewDocument(tableName).delete(jsonPath);
+                this.getTableContextNewDocument(tableName).delete(jsonPath);
             }else{
-                getTableContextDocument(tableName).delete(jsonPath);
+                this.getTableContextDocument(tableName).delete(jsonPath);
             }
             return 1;
         }catch (PathNotFoundException e){
@@ -256,7 +256,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     public Object read(String jsonPath){
         try {
-            String tableName = tableNameStack.peek();
+            String tableName = this.tableNameStack.peek();
             return getTableContextDocument(tableName).read(jsonPath);
         }catch (Exception e){
             e.printStackTrace();
@@ -289,12 +289,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.TableNameContext tableNameContext = ctx.tableName();
         if(ObjectUtil.isNotEmpty(tableNameContext)){
             String tableName = tableNameContext.getText();
-            if (!tableDataMap.containsKey(tableName)) {
+            if (!this.tableDataMap.containsKey(tableName)) {
                 throw new RuntimeException("not exist table : "+tableName);
             }
-            tableNameStack.push(tableName);
+            this.tableNameStack.push(tableName);
         }else{
-            tableNameStack.push(MAIN_TABLE_NAME);
+            this.tableNameStack.push(MAIN_TABLE_NAME);
         }
 
         // 处理 WHERE 子句
@@ -306,10 +306,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                     visit(ctx.setClause());
                     return 1;
                 }
-                System.out.println("条件满足");
+                log.info("条件满足");
                 return 0;
             } else {
-                System.out.println("条件不满足");
+                log.info("条件不满足");
                 return 0;
             }
         } else {
@@ -317,7 +317,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             if (ctx.setClause() != null) {
                 visit(ctx.setClause());
             }
-            System.out.println("没有条件");
+            log.info("没有条件");
             return 1;
         }
     }
@@ -339,7 +339,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.RelationalExprContext relationalExprContext = ctx.relationalExpr();
         SqlParser.CaseExprContext caseExprContext = ctx.caseExpr();
         SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
-        String tableName = tableNameStack.peek();
+        String tableName = this.tableNameStack.peek();
         if(delColumnExprContext != null){
             delCol(tableName,jsonPath);
             return null;
@@ -353,11 +353,11 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
 
         try {
-            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
             if(writeModel){
-                getTableContextNewDocument(tableName).set(jsonPath, value);
+                this.getTableContextNewDocument(tableName).set(jsonPath, value);
             }else{
-                getTableContextDocument(tableName).set(jsonPath, value);
+                this.getTableContextDocument(tableName).set(jsonPath, value);
             }
         }catch (PathNotFoundException e){
             // 没有这个节点，新增
@@ -371,11 +371,11 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 firstPath = "$";
                 namePath = jsonPath;
             }
-            Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
             if(writeModel){
-                getTableContextNewDocument(tableName).put(firstPath,namePath, value);
+                this.getTableContextNewDocument(tableName).put(firstPath,namePath, value);
             }else{
-                getTableContextDocument(tableName).put(firstPath,namePath, value);
+                this.getTableContextDocument(tableName).put(firstPath,namePath, value);
             }
         }
         return null;
@@ -705,8 +705,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             }
         }
         String methodName = customId.getText().substring(1);
-        Map<Method, List<Class<?>>> row = methodTable.row(methodName);
-        if(row == null || row.isEmpty()){
+        Map<Method, List<Class<?>>> row = this.methodTable.row(methodName);
+        if(row.isEmpty()){
             throw new RuntimeException("not has function : "+methodName);
         }
         Map.Entry<Method, List<Class<?>>> methodListEntry = row.entrySet().stream().findFirst().get();
@@ -715,7 +715,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         List<Object> innerArgsList = new ArrayList<>();
         Object result = null;
         if(method != null){
-            List<MacroEnum> macroEnums = macroMap.get(methodName);
+            List<MacroEnum> macroEnums = this.macroMap.get(methodName);
             if(ObjectUtil.isNotEmpty(macroEnums)){
                 for (MacroEnum macroEnum : macroEnums) {
                     innerArgsList.add(getMacro(macroEnum));
@@ -833,23 +833,23 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.TableNameContext tableNameContext = ctx.tableName();
         SqlParser.ExpressionContext expression = ctx.expression();
         String tableName = tableNameContext.getText();
-        tableNameStack.push(tableName);
+        this.tableNameStack.push(tableName);
         boolean condition = true;
         if(ObjectUtil.isNotEmpty(expression)){
             condition = (Boolean) visitExpression(expression);
         }
         if(!condition){
-            tableNameStack.pop();
+            this.tableNameStack.pop();
             return null;
         }
         Object v = visitSelectList(selectListContext);
-        tableNameStack.pop();
+        this.tableNameStack.pop();
         return v == null ? "{}":v.toString();
     }
 
     @Override
     public Object visitStarLable(SqlParser.StarLableContext ctx) {
-        return read("$");
+        return this.read("$");
     }
 
 
@@ -1106,9 +1106,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.ExpressionContext expression = ctx.expression();
         if(ObjectUtil.isNotEmpty(tableNameContext)){
             String tableName = tableNameContext.getText();
-            tableNameStack.push(tableName);
+            this.tableNameStack.push(tableName);
         }else{
-            tableNameStack.push(MAIN_TABLE_NAME);
+            this.tableNameStack.push(MAIN_TABLE_NAME);
         }
         boolean condition = true;
         if(ObjectUtil.isNotEmpty(expression)){
@@ -1116,18 +1116,18 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
 
         if(!condition){
-            tableNameStack.pop();
+            this.tableNameStack.pop();
             return 0;
         }
         Integer flag = (Integer)visitDelClause(delClauseContext);
-        tableNameStack.pop();
+        this.tableNameStack.pop();
         return flag;
     }
 
     @Override
     public Object visitDelClause(SqlParser.DelClauseContext ctx) {
         List<SqlParser.ColumnNameContext> columnNameContexts = ctx.columnName();
-        String tableName = tableNameStack.peek();
+        String tableName = this.tableNameStack.peek();
         for (SqlParser.ColumnNameContext columnNameContext : columnNameContexts) {
             Object jsonPath = visitColumnName(columnNameContext);
             delCol(tableName,jsonPath.toString());
@@ -1143,15 +1143,15 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(macroEnum != null){
             switch (macroEnum){
                 case ORIGINAL_JSON:
-                    return getTableContextOriginalJson(tableName);
+                    return this.getTableContextOriginalJson(tableName);
                 case READ_DOCUMENT:
                 case ORIGINAL_WRITE_DOCUMENT:
-                    return getTableContextDocument(tableName);
+                    return this.getTableContextDocument(tableName);
                 case COPY_WRITE_WRITE_DOCUMENT:
-                    return getTableContextNewDocument(tableName);
+                    return this.getTableContextNewDocument(tableName);
                 case CUR_WRITE_DOCUMENT:
-                    Boolean writeModel = getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
-                    return writeModel ? getTableContextNewDocument(tableName) : getTableContextDocument(tableName);
+                    Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+                    return writeModel ? this.getTableContextNewDocument(tableName) : this.getTableContextDocument(tableName);
                 default: return null;
             }
         }
