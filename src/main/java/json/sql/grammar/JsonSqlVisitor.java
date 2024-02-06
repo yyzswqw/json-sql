@@ -12,7 +12,6 @@ import json.sql.entity.TableContext;
 import json.sql.enums.MacroEnum;
 import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
-import json.sql.udf.CustomMethod;
 import json.sql.util.CompareUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -480,6 +479,18 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitDoubleValue(SqlParser.DoubleValueContext ctx) {
+        String text = ctx.getText();
+        return new BigDecimal(text);
+    }
+
+    @Override
+    public Object visitIntValue(SqlParser.IntValueContext ctx) {
+        String text = ctx.getText();
+        return new BigDecimal(text);
+    }
+
+    @Override
     public Object visitId(SqlParser.IdContext ctx) {
         SqlParser.PrimaryExprContext primaryExprContext = ctx.primaryExpr();
         return visitPrimaryExpr(primaryExprContext);
@@ -760,12 +771,24 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
         SqlParser.IntValueContext intValueContext = ctx.intValue();
         if (intValueContext != null) {
-            return new BigDecimal(intValueContext.getText());
+            BigDecimal result;
+            result = new BigDecimal(intValueContext.getText());
+            if(ctx.getChildCount()> 1){
+                // 前面有一个负号
+                result = new BigDecimal("0").subtract(result);
+            }
+            return result;
         }
 
         SqlParser.DoubleValueContext doubleValueContext = ctx.doubleValue();
         if (doubleValueContext != null) {
-            return new BigDecimal(doubleValueContext.getText());
+            BigDecimal result;
+            result = new BigDecimal(doubleValueContext.getText());
+            if(ctx.getChildCount()> 1){
+                // 前面有一个负号
+                result = new BigDecimal("0").subtract(result);
+            }
+            return result;
         }
 
         SqlParser.NullLableContext nullLableContext = ctx.nullLable();

@@ -21,8 +21,8 @@ fragment UNDERSCORE : '_';
 CUSTOMID : '$' (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* ;
 ID : (LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)* | ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*) ('.' ((LETTER | UNDERSCORE) (LETTER | DIGIT | UNDERSCORE)*))*;
 STRING : ('"' (~('\\' | '"') | '\\' .)* '"') | ('\'' (~('\\' | '\'') | '\\' .)* '\'');
-INT : '-'? DIGIT+;
-DOUBLE : '-'? ([0-9]+ '.' [0-9]* | '.' [0-9]+);
+INT : DIGIT+;
+DOUBLE : ([0-9]+ '.' [0-9]* | '.' [0-9]+);
 
 WS : [ \t\r\n]+ -> skip;
 
@@ -67,7 +67,7 @@ setExpression : columnName '=' (relationalExpr | caseExpr | delColumnExpr);
 
 tableName : ID;
 columnName : ID | jsonPathFunction;
-literalValue : STRING | doubleValue | intValue | nullLable | boolLable;
+literalValue : STRING | doubleValue | ('-') doubleValue | intValue | ('-') intValue | nullLable | boolLable;
 intValue : INT;
 doubleValue : DOUBLE;
 
