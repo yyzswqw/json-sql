@@ -3,6 +3,7 @@ package json.sql.udf;
 import com.jayway.jsonpath.DocumentContext;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 
 public class CustomMethod {
 
@@ -20,6 +21,12 @@ public class CustomMethod {
 
     public static int d(Object a1, Object a2, Object a3, Object a4, DocumentContext a5){
         return 2;
+    }
+
+    public static void explode(DocumentContext curDocumentContext, String jsonPath, HashMap ignoreKeys){
+        System.out.println(jsonPath);
+//        System.out.println(Arrays.toString(ignoreKeys));
+        System.out.println(ignoreKeys);
     }
 
 }

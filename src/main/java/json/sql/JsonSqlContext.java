@@ -25,6 +25,12 @@ public class JsonSqlContext {
         jsonSqlVisitor.setTableConfig(tableName, key,value);
     }
 
+    /**
+     * argsType不需要定义宏参数，宏参数使用registerMacro(String functionName, MacroEnum... macros);
+     * @param functionName 方法名
+     * @param method 方法逻辑method
+     * @param argsType 参数类型
+     */
     public void registerFunction(String functionName, Method method, Class<?> ... argsType){
         jsonSqlVisitor.registerFunction(functionName,method,argsType);
     }

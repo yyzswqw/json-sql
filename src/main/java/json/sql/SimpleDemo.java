@@ -7,6 +7,7 @@ import json.sql.udf.CustomMethod;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.HashMap;
 
 public class SimpleDemo {
 
@@ -49,7 +50,7 @@ public class SimpleDemo {
     public static void main(String[] args) {
         JsonSqlContext jsonSqlContext = new JsonSqlContext();
         registerCustomMethod(jsonSqlContext);
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,age = jsonPath('age')%4 + age";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.bicycle','a','b',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
 //        String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['category']\"),age = jsonPath(\"age\")%4 + age";
@@ -110,6 +111,14 @@ public class SimpleDemo {
 
             jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
             jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+
+//            Method explode = CustomMethod.class.getMethod("explode", DocumentContext.class,String.class,String[].class);
+//            jsonSqlContext.registerFunction("explode", explode,String.class,String[].class);
+
+            Method explode = CustomMethod.class.getMethod("explode", DocumentContext.class,String.class, HashMap.class);
+            jsonSqlContext.registerFunction("explode", explode,String.class, HashMap.class);
+
+            jsonSqlContext.registerMacro("explode",MacroEnum.CUR_WRITE_DOCUMENT);
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);

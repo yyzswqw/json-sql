@@ -22,6 +22,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -735,13 +736,84 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                         if(i < innerArgs.size()){
                             innerArg = innerArgs.get(i);
                         }
-                        Object convert = null;
-                        try {
-                            convert = Convert.convert(aClass,innerArg);
-                        }catch (Exception e){
-                            e.printStackTrace();
+                        // 如果是最后一个参数，并且是可变长度的数组或者集合，将剩下所有的参数封装进去
+                        if(i == argsTypeClasses.size() - 1){
+                            if (aClass.isArray()) {
+                                // 获取数组元素的类型
+                                Class<?> componentType = aClass.getComponentType();
+                                Object arguments = Array.newInstance(componentType, innerArgs.size() - i);
+                                int j = 0;
+                                for (;i < innerArgs.size(); i++){
+                                    Object convert = null;
+                                    innerArg = innerArgs.get(i);
+                                    try {
+                                        convert = Convert.convert(componentType,innerArg);
+                                    }catch (Exception e){
+                                        e.printStackTrace();
+                                    }
+                                    Array.set(arguments, j++, convert);
+                                }
+                                innerArgsList.add(arguments);
+                                break ;
+                            }else if (Map.class.isAssignableFrom(aClass)) {
+                                Map<Object,Object> temp = new LinkedHashMap<>();
+                                Object innerArgKey = null;
+                                Object innerArgValue = null;
+                                for (;i < innerArgs.size(); i+=2){
+                                    Object convert = null;
+                                    innerArgKey = null;
+                                    innerArgKey = innerArgs.get(i);
+                                    innerArgValue = null;
+                                    if(i+1 < innerArgs.size()){
+                                        innerArgValue = innerArgs.get(i+1);
+                                        try {
+                                            convert = Convert.convert(Object.class,innerArgValue);
+                                        }catch (Exception e){
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                    if(ObjectUtil.isNotEmpty(innerArgKey)){
+                                        temp.put(innerArgKey,convert);
+                                    }
+                                }
+                                Object convert = null;
+                                try {
+                                    convert = Convert.convert(aClass, temp);
+                                }catch (Exception e){
+                                    e.printStackTrace();
+                                }
+                                innerArgsList.add(convert);
+                                break ;
+                            }else if (Collection.class.isAssignableFrom(aClass)) {
+                                List<Object> temp = new ArrayList<>();
+                                for (;i < innerArgs.size(); i++){
+                                    Object convert = null;
+                                    innerArg = innerArgs.get(i);
+                                    try {
+                                        convert = Convert.convert(Object.class,innerArg);
+                                    }catch (Exception e){
+                                        e.printStackTrace();
+                                    }
+                                    temp.add(convert);
+                                }
+                                Object convert = null;
+                                try {
+                                    convert = Convert.convert(aClass, temp);
+                                }catch (Exception e){
+                                    e.printStackTrace();
+                                }
+                                innerArgsList.add(convert);
+                                break ;
+                            }
+                        } else {
+                            Object convert = null;
+                            try {
+                                convert = Convert.convert(aClass,innerArg);
+                            }catch (Exception e){
+                                e.printStackTrace();
+                            }
+                            innerArgsList.add(convert);
                         }
-                        innerArgsList.add(convert);
                     }
                     result = method.invoke(null, innerArgsList.toArray());
                 }

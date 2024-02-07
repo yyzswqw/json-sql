@@ -19,7 +19,7 @@
   - select * from t1 where a in (select b from t2 where 1=1 as b)，select子句返回的是json串，需要后面使用as表达式说明使用的字段名称
 - 内置函数
 - 自定义UDF函数，注册后，使用时需要加上$前缀
-- 自定义UDF函数，支持宏变量
+- 自定义UDF函数，支持宏变量,宏变量需要在所有参数的前面定义,最后一个参数可以是可变数组或者是集合（Collection类及其子类）或者Map类型（需要参数两两匹配，即key,value）
 
 假设有下面一条JSON数据，在java中将其给变量json:
 
