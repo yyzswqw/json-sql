@@ -3,11 +3,10 @@ package json.sql;
 import com.jayway.jsonpath.DocumentContext;
 import json.sql.config.TableConfig;
 import json.sql.enums.MacroEnum;
-import json.sql.udf.CustomMethod;
+import json.sql.udf.InnerUdfMethod;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.HashMap;
 
 public class SimpleDemo {
 
@@ -42,15 +41,24 @@ public class SimpleDemo {
             "\t\t],\n" +
             "\t\t\"bicycle\": {\n" +
             "\t\t\t\"color\": \"red\",\n" +
-            "\t\t\t\"price\": 19.95\n" +
-            "\t\t}\n" +
+            "\t\t\t\"price\": 19.95,\n" +
+            "\t\t\t\"abc\":{\"a\":1,\"b\":true,\"ac\":{\"xc\":\"qwq\",\"xv\":1234}}," +
+            "\t\t\t\"abcd1\":[{\"ab1\":2,\"bb1\":false},{\"acb1\":[{\"xcb1\":\"qwq1\"},{\"xvb1\":12345}]}]" +
+            "\t\t},\n" +
+            "\t\t\"temp1\":[{\"tempab1\":1,\"tempbb1\":true},{\"tempacb1\":[{\"xcb1\":\"qwq\"},{\"tempxvb1\":1234}]}]," +
+            "\t\t\"temp2\":\"[{\\\"tempab1\\\":1,\\\"tempbb1\\\":true},{\\\"tempab1\\\":2,\\\"tempbb1\\\":false}]\"," +
+            "\t\t\"temp3\":[\"{\\\"tempab1\\\":1,\\\"tempbb1\\\":\\\"{\\\\\\\"a\\\\\\\":1}\\\"}\",{\"tempab1\":2,\"tempbb1\":false}]" +
             "\t}\n" +
             "}";
 
     public static void main(String[] args) {
         JsonSqlContext jsonSqlContext = new JsonSqlContext();
         registerCustomMethod(jsonSqlContext);
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.bicycle','a','b',1,true),age = jsonPath('age')%4 + age";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode(true,'store.bicycle',true,true,false,1,'abc','abcd1'),age = jsonPath('age')%4 + age";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $valuesByLevel('store.bicycle',10,'xvb1'),temp2Size = $size('store.temp2'),size = $size('ab',true),age = jsonPath('age')%4 + age";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp3',2,'a','tempbb1'),age = jsonPath('age')%4 + age";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('$'),age = jsonPath('age')%4 + age";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
 //        String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['category']\"),age = jsonPath(\"age\")%4 + age";
@@ -99,10 +107,10 @@ public class SimpleDemo {
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
         try {
-            Method a = CustomMethod.class.getMethod("a", Number.class, Object.class);
-            Method b = CustomMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
-            Method c = CustomMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
-            Method d = CustomMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
+            Method a = InnerUdfMethod.class.getMethod("a", Number.class, Object.class);
+            Method b = InnerUdfMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
+            Method c = InnerUdfMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
+            Method d = InnerUdfMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
 
             jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
             jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
@@ -111,14 +119,6 @@ public class SimpleDemo {
 
             jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
             jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
-
-//            Method explode = CustomMethod.class.getMethod("explode", DocumentContext.class,String.class,String[].class);
-//            jsonSqlContext.registerFunction("explode", explode,String.class,String[].class);
-
-            Method explode = CustomMethod.class.getMethod("explode", DocumentContext.class,String.class, HashMap.class);
-            jsonSqlContext.registerFunction("explode", explode,String.class, HashMap.class);
-
-            jsonSqlContext.registerMacro("explode",MacroEnum.CUR_WRITE_DOCUMENT);
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);

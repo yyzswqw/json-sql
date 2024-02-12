@@ -741,6 +741,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                             if (aClass.isArray()) {
                                 // 获取数组元素的类型
                                 Class<?> componentType = aClass.getComponentType();
+                                if (ObjectUtil.isEmpty(innerArgs) || innerArgs.size() - i < 0) {
+                                    innerArgsList.add(null);
+                                    break ;
+                                }
                                 Object arguments = Array.newInstance(componentType, innerArgs.size() - i);
                                 int j = 0;
                                 for (;i < innerArgs.size(); i++){
@@ -804,6 +808,14 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                                 }
                                 innerArgsList.add(convert);
                                 break ;
+                            }else {
+                                Object convert = null;
+                                try {
+                                    convert = Convert.convert(aClass,innerArg);
+                                }catch (Exception e){
+                                    e.printStackTrace();
+                                }
+                                innerArgsList.add(convert);
                             }
                         } else {
                             Object convert = null;
@@ -1048,8 +1060,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 String v = o.toString();
                 try {
                     Object read = JsonPath.parse(v).read(selectAsColumnNameContext.getText());
-                    if(read instanceof List){
-                        List tempV = (List)read;
+                    if(read instanceof Collection){
+                        Collection tempV = (Collection)read;
                         if(ObjectUtil.isNotEmpty(tempV)){
                             inValueList.addAll(tempV);
                         }

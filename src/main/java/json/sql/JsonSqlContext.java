@@ -2,6 +2,7 @@ package json.sql;
 
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
+import json.sql.udf.CustomMethodFactory;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -11,7 +12,12 @@ import java.util.Map;
 
 public class JsonSqlContext {
 
-    private final JsonSqlVisitor jsonSqlVisitor = new JsonSqlVisitor();
+    private JsonSqlVisitor jsonSqlVisitor;
+
+    public JsonSqlContext(){
+        this.jsonSqlVisitor = new JsonSqlVisitor();
+        CustomMethodFactory.registerCustomMethod(this);
+    }
 
     public void registerTable(String tableName,String json) {
         jsonSqlVisitor.registerTable(tableName,json);
