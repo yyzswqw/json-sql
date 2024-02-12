@@ -46,6 +46,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     // region ======================== api start ===================================
 
+    /**
+     * 注册自定义UDF函数
+     * @param functionName 函数名
+     * @param method 实现的具体方法，只能是静态方法
+     * @param argsType 参数列表，不包含宏参数，宏参数通过 registerMacro(String functionName,MacroEnum ... macros); 注册
+     */
     public void registerFunction(String functionName,Method method,Class<?> ... argsType){
         if(argsType == null || argsType.length == 0){
             this.methodTable.put(functionName,method,new ArrayList<>());
@@ -57,6 +63,11 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
     }
 
+    /**
+     * 注册函数宏参数，宏参数必须定义在函数的最开始的参数
+     * @param functionName 函数名
+     * @param macros 参数宏列表
+     */
     public void registerMacro(String functionName,MacroEnum ... macros) {
         if(macros == null || macros.length == 0){
             return ;
@@ -68,6 +79,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
     }
 
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param json json值
+     * @param config 配置项
+     */
     public void registerTable(String tableName,String json,Map<String,Object> config) {
         if(ObjectUtil.hasEmpty(tableName,json)){
             throw new RuntimeException("表名或者json 数据不能为空");
@@ -86,10 +103,21 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         this.tableDataMap.put(tableName,tableContext);
     }
 
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param json json值
+     */
     public void registerTable(String tableName,String json) {
         this.registerTable(tableName,json,null);
     }
 
+    /**
+     * 设置表的配置项
+     * @param tableName 表名
+     * @param key 配置项key
+     * @param value 值
+     */
     public void setTableConfig(String tableName,String key,Object value) {
         Map<String, Object> tableContextConfig = this.getTableContextConfig(tableName);
         if(tableContextConfig != null){
@@ -97,18 +125,42 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
     }
 
+    /**
+     * 执行sql语法树
+     * @param tree sql的语法树
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(ParseTree tree){
         return this.exec(tree,null,null);
     }
 
+    /**
+     * 执行sql语法树
+     * @param tree sql的语法树
+     * @param jsonString json值
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(ParseTree tree,String jsonString){
         return this.exec(tree,null,jsonString);
     }
 
+    /**
+     * 执行sql语法树
+     * @param tree sql的语法树
+     * @param writeModel 写模式
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(ParseTree tree,Boolean writeModel){
         return this.exec(tree,writeModel,null);
     }
 
+    /**
+     * 执行sql语法树
+     * @param tree sql的语法树
+     * @param writeModel 写模式
+     * @param jsonString json值
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(ParseTree tree,Boolean writeModel,String jsonString){
         if(ObjectUtil.isNotEmpty(jsonString)){
             this.setJsonString(jsonString);
@@ -118,27 +170,58 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         Object visit = this.visit(tree);
         if(ObjectUtil.isNotEmpty(visit)){
-            return visit == null ? "{}":visit.toString();
+            return visit.toString();
         }
         return this.getResult(MAIN_TABLE_NAME);
     }
 
+    /**
+     * 执行sql
+     * @param sql sql
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(String sql){
         return this.exec(sql,false,null);
     }
 
+    /**
+     * 执行sql
+     * @param sql sql
+     * @param jsonString json值
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(String sql,String jsonString){
         return this.exec(sql,false,jsonString);
     }
 
+    /**
+     * 执行sql
+     * @param sql sql
+     * @param writeModel 写模式
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(String sql,boolean writeModel){
         return this.exec(sql,writeModel,null);
     }
 
+    /**
+     * 执行sql
+     * @param sql sql
+     * @param writeModel 写模式
+     * @param jsonString json值
+     * @return 执行结果，为空则返回主表结果
+     */
     public String exec(String sql,boolean writeModel,String jsonString){
         json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
-        ParseTree tree = parser.updateSql();
+        ParserErrorListener parserErrorListener = new ParserErrorListener();
+        parser.addErrorListener(parserErrorListener);
+        ParseTree tree = parser.sql();
+        if (parserErrorListener.hasError()) {
+            List<String> errors = parserErrorListener.errors();
+            String join = String.join("\n", errors);
+            throw new RuntimeException("parser errors : "+join);
+        }
         if(ObjectUtil.isNotEmpty(jsonString)){
             this.setJsonString(jsonString);
         }
@@ -147,16 +230,25 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         Object visit = this.visit(tree);
         if(ObjectUtil.isNotEmpty(visit)){
-            return visit == null ? "{}":visit.toString();
+            return visit.toString();
         }
         return this.getResult(MAIN_TABLE_NAME);
     }
 
 
+    /**
+     * 注册主表
+     * @param jsonString json值
+     */
     public void setJsonString(String jsonString) {
         registerTable(MAIN_TABLE_NAME,jsonString);
     }
 
+    /**
+     * 设置表的写模式
+     * @param tableName 表名
+     * @param writeModel 写模式
+     */
     public void setWriteModel(String tableName,boolean writeModel) {
         TableContext tableContext = getTableContext(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
@@ -166,12 +258,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         tableContext.setConfig(TableConfig.WRITE_MODEL,writeModel);
     }
 
+    /**
+     * 获取表的最终json值结果
+     * @param tableName 表名
+     * @return 表的json值
+     */
     public String getResult(String tableName){
         TableContext tableContext = this.tableDataMap.get(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
             return null;
         }
-        final Boolean writeModel = MapUtil.getBool(tableContext.getConfig(), TableConfig.WRITE_MODEL
+        Boolean writeModel = MapUtil.getBool(tableContext.getConfig(), TableConfig.WRITE_MODEL
                 , MapUtil.getBool(TableContext.defaultConfig, TableConfig.WRITE_MODEL, false));
         if(writeModel && tableContext.getNewDocument() != null){
             return tableContext.getNewDocument().jsonString();
@@ -182,15 +279,33 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return tableContext.getOriginalJson();
     }
 
+    /**
+     * 获取表的上下文
+     * @param tableName 表名
+     * @return 表的上下文
+     */
     public TableContext getTableContext(String tableName){
         return this.tableDataMap.get(tableName);
     }
 
+    /**
+     * 获取表的所有配置项
+     * @param tableName 表名
+     * @return  配置项的值
+     */
     public Map<String,Object> getTableContextConfig(String tableName){
         TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getConfig();
     }
 
+    /**
+     * 获取表的配置项
+     * @param tableName 表名
+     * @param key 配置项key
+     * @param classType 转换的类型
+     * @return 配置项的值
+     * @param <T> 转换后返回的类型
+     */
     public <T> T getTableContextConfig(String tableName,String key,Class<T> classType){
         TableContext tableContext = this.getTableContext(tableName);
         Map<String, Object> config = tableContext.getConfig();
@@ -205,6 +320,15 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return v;
     }
 
+    /**
+     * 获取表的配置项
+     * @param tableName 表名
+     * @param key 配置项key
+     * @param classType 转换的类型
+     * @param defaultValue 默认值
+     * @return 配置项的值
+     * @param <T> 转换后返回的类型
+     */
     public <T> T getTableContextConfig(String tableName,String key,Class<T> classType,T defaultValue){
         TableContext tableContext = this.getTableContext(tableName);
         Map<String, Object> config = tableContext.getConfig();
@@ -222,21 +346,63 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         return defaultValue;
     }
 
+    /**
+     * 获取原始操作的DocumentContext
+     * @param tableName 表名
+     * @return DocumentContext
+     */
     public DocumentContext getTableContextDocument(String tableName){
         TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getDocument();
     }
 
+    /**
+     * 获取当前copy on write操作的DocumentContext
+     * @param tableName 表名
+     * @return DocumentContext
+     */
     public DocumentContext getTableContextNewDocument(String tableName){
         TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getNewDocument();
     }
 
+    /**
+     * 获取当前写操作的DocumentContext
+     * @param tableName 表名
+     * @return DocumentContext
+     */
+    public DocumentContext getTableContextCurWriteDocument(String tableName){
+        TableContext tableContext = this.tableDataMap.get(tableName);
+        if(ObjectUtil.isEmpty(tableContext)){
+            return null;
+        }
+        Boolean writeModel = MapUtil.getBool(tableContext.getConfig(), TableConfig.WRITE_MODEL
+                , MapUtil.getBool(TableContext.defaultConfig, TableConfig.WRITE_MODEL, false));
+        if(writeModel && tableContext.getNewDocument() != null){
+            return tableContext.getNewDocument();
+        }
+        if(!writeModel && tableContext.getDocument() != null){
+            return tableContext.getDocument();
+        }
+        return null;
+    }
+
+    /**
+     * 获取表的原始json
+     * @param tableName 表名
+     * @return 原始json
+     */
     public String getTableContextOriginalJson(String tableName){
         TableContext tableContext = this.getTableContext(tableName);
         return tableContext == null?null:tableContext.getOriginalJson();
     }
 
+    /**
+     * 删除列
+     * @param tableName 表名
+     * @param jsonPath jsonPath
+     * @return 是否删除成功 1:是，0::否
+     */
     public int delCol(String tableName,String jsonPath){
         TableContext tableContext = this.getTableContext(tableName);
         if(ObjectUtil.isEmpty(tableContext)){
@@ -250,17 +416,63 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 this.getTableContextDocument(tableName).delete(jsonPath);
             }
             return 1;
-        }catch (PathNotFoundException e){
+        }catch (Exception e){
         }
         return 0;
     }
 
+    /**
+     * 获取当前操作表的jsonPath的值
+     * @param jsonPath jsonPath
+     * @return 值
+     */
     public Object read(String jsonPath){
         try {
             String tableName = this.tableNameStack.peek();
             return getTableContextDocument(tableName).read(jsonPath);
         }catch (Exception e){
-            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 根据表名和jsonPath 获取值,通过当前操作的JsonDocument
+     * @param tableName 表名
+     * @param jsonPath jsonPath
+     * @return 值
+     */
+    public Object readCurWriteDocument(String tableName,String jsonPath){
+        try {
+            return getTableContextCurWriteDocument(tableName).read(jsonPath);
+        }catch (Exception e){
+            return null;
+        }
+    }
+
+    /**
+     * 根据表名和jsonPath 获取值,通过原始的JsonDocument
+     * @param tableName 表名
+     * @param jsonPath jsonPath
+     * @return 值
+     */
+    public Object readOriginalDocument(String tableName,String jsonPath){
+        try {
+            return getTableContextDocument(tableName).read(jsonPath);
+        }catch (Exception e){
+            return null;
+        }
+    }
+
+    /**
+     * 根据表名和jsonPath 获取值,通过 copy on write 的JsonDocument
+     * @param tableName 表名
+     * @param jsonPath jsonPath
+     * @return 值
+     */
+    public Object readCopyOnWriteDocument(String tableName,String jsonPath){
+        try {
+            return getTableContextNewDocument(tableName).read(jsonPath);
+        }catch (Exception e){
             return null;
         }
     }
@@ -308,9 +520,11 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                     return 1;
                 }
                 log.info("条件满足");
+                this.tableNameStack.pop();
                 return 0;
             } else {
                 log.info("条件不满足");
+                this.tableNameStack.pop();
                 return 0;
             }
         } else {
@@ -319,6 +533,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 visit(ctx.setClause());
             }
             log.info("没有条件");
+            this.tableNameStack.pop();
             return 1;
         }
     }

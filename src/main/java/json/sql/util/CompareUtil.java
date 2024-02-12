@@ -12,6 +12,13 @@ public class CompareUtil {
 
     }
 
+    /**
+     * 比较两个值是否满足比较符
+     * @param left 左值
+     * @param operator 比较符
+     * @param right 右值
+     * @return 满足比较符，返回true，否则，返回false
+     */
     public static boolean compareValues(Object left, String operator, Object right) {
         if (left == null || right == null) {
             return false;
@@ -35,6 +42,12 @@ public class CompareUtil {
         }
     }
 
+    /**
+     * 比较两个值的大小，按照时间、数字、boolean、字符串的优先级顺序比较
+     * @param left 左值
+     * @param right 右值
+     * @return 左值大 返回正树，相等 返回 0 ,左值小 返回负数
+     */
     public static int compareValue(Object left, Object right) {
         // 先尝试时间比较
         try {
@@ -44,9 +57,14 @@ public class CompareUtil {
                 Date d1 = Convert.convert(Date.class, left);
                 Date d2 = Convert.convert(Date.class, right);
                 return d1.compareTo(d2);
+            }else{
+                // 尝试直接转时间
+                Date d1 = Convert.convert(Date.class, left);
+                Date d2 = Convert.convert(Date.class, right);
+                return d1.compareTo(d2);
             }
-            throw new RuntimeException("时间类型不正确，不能比较");
         }catch (Exception e){}
+
         // 时间不能比较，则尝试数字比较
         try {
             // 其中一个是数字，才尝试比较
@@ -91,7 +109,14 @@ public class CompareUtil {
         return -1;
     }
 
-    public static int compareNumbers(Object left, Object right) throws Exception {
+    /**
+     * 比较两个数字的大小
+     * @param left 左值
+     * @param right 右值
+     * @return 左值大 返回正树，相等 返回 0 ,左值小 返回负数
+     * @throws NumberFormatException NumberFormatException
+     */
+    public static int compareNumbers(Object left, Object right) throws NumberFormatException {
         if (left instanceof Integer && right instanceof Integer) {
             return ((Integer) left).compareTo((Integer) right);
         }

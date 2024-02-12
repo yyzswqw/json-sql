@@ -47,7 +47,9 @@ public class SimpleDemo {
             "\t\t},\n" +
             "\t\t\"temp1\":[{\"tempab1\":1,\"tempbb1\":true},{\"tempacb1\":[{\"xcb1\":\"qwq\"},{\"tempxvb1\":1234}]}]," +
             "\t\t\"temp2\":\"[{\\\"tempab1\\\":1,\\\"tempbb1\\\":true},{\\\"tempab1\\\":2,\\\"tempbb1\\\":false}]\"," +
-            "\t\t\"temp3\":[\"{\\\"tempab1\\\":1,\\\"tempbb1\\\":\\\"{\\\\\\\"a\\\\\\\":1}\\\"}\",{\"tempab1\":2,\"tempbb1\":false}]" +
+            "\t\t\"temp3\":[\"{\\\"tempab1\\\":1,\\\"tempbb1\\\":\\\"{\\\\\\\"a\\\\\\\":1}\\\"}\",{\"tempab1\":2,\"tempbb1\":false}]," +
+            "\t\t\"temp4\":\"[\\\"a\\\",\\\"b\\\",2,1,\\\"c\\\",true]\"," +
+            "\t\t\"temp5\":\"{\\\"abcd\\\":\\\"[\\\\\\\"a\\\\\\\",\\\\\\\"b\\\\\\\",2,1,\\\\\\\"c\\\\\\\",true]\\\"}\"" +
             "\t}\n" +
             "}";
 
@@ -56,8 +58,8 @@ public class SimpleDemo {
         registerCustomMethod(jsonSqlContext);
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode(true,'store.bicycle',true,true,false,1,'abc','abcd1'),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $valuesByLevel('store.bicycle',10,'xvb1'),temp2Size = $size('store.temp2'),size = $size('ab',true),age = jsonPath('age')%4 + age";
-//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp3',2,'a','tempbb1'),age = jsonPath('age')%4 + age";
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),age = jsonPath('age')%4 + age";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp4',2,'a'),age = jsonPath('age')%4 + age";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),ab = $explode(true,'store.bicycle',true,true,false,1),age = jsonPath('age')%4 + age,delIfNull('age')";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -103,6 +105,7 @@ public class SimpleDemo {
         System.out.println("最终结果 table a1 :"+jsonSqlContext.getTable("a1"));
         System.out.println();
         System.out.println("最终结果 table b1 :"+jsonSqlContext.getTable("b1"));
+        System.out.println("查询指定结果 :"+jsonSqlContext.readCurWriteDocument("a1", "$"));
     }
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {

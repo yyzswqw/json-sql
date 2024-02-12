@@ -147,15 +147,29 @@ public class InnerUdfMethod {
                 }catch (Exception e){
                     // 无法转json
                 }
-                if (!(parse.json() instanceof CharSequence)) {
+                if (ObjectUtil.isNotEmpty(parse) && !(parse.json() instanceof CharSequence)) {
                     // 单纯是一个字符，不是一个json,如果是一个正常的json,经过上一步后应该是一个jsonArray 或者 jsonObject(Map)
                     if(ObjectUtil.isNotEmpty(parse)){
-                        Object values = innerFormat(parse,"$",level - 1,ignoreKeys);
-//                    curDocumentContext = parse;
+                        Object values = null;
+                        if((parse.json() instanceof JSONArray)){
+                            // 数组下每个对象的层级应该和父级相同
+                            values = innerFormat(parse,"$",level,ignoreKeys);
+                        }else{
+                            values = innerFormat(parse,"$",level - 1,ignoreKeys);
+                        }
+
                         if(ObjectUtil.isNotEmpty(values)){
-                            curDocumentContext = parse;
+                            try {
+                                curDocumentContext.set(jsonPath, parse.json());
+                            }catch (Exception e){
+                                curDocumentContext = parse;
+                            }
                         }
                     }
+                }else if(ObjectUtil.isNotEmpty(parse)){
+                    return parse.json();
+                }else{
+                    return read;
                 }
 
             }else{
