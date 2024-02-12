@@ -3,7 +3,7 @@ package json.sql;
 import com.jayway.jsonpath.DocumentContext;
 import json.sql.config.TableConfig;
 import json.sql.enums.MacroEnum;
-import json.sql.udf.InnerUdfMethod;
+import json.sql.udf.UdfDemo;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -57,7 +57,7 @@ public class SimpleDemo {
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode(true,'store.bicycle',true,true,false,1,'abc','abcd1'),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $valuesByLevel('store.bicycle',10,'xvb1'),temp2Size = $size('store.temp2'),size = $size('ab',true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp3',2,'a','tempbb1'),age = jsonPath('age')%4 + age";
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('$'),age = jsonPath('age')%4 + age";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -80,9 +80,9 @@ public class SimpleDemo {
 //                "else toJson('{\"a\":23,\"b\":\"ab\"}') end " +
 //                "else toJsonByPath('$..book[:3][\"category\"]') end " +
 //                " where true = true";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
-//        String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+//        String sql = "update a1 SET $del('$.store.book[0].category','$.store.book[1].category','store.bicycle.abc.$a'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
+//        String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
+//        String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 //        String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 //        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 in (select 1 as abc from b1 where 1=1 as abc)";
 //        String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 not in (1,2,3,22.99)";
@@ -107,10 +107,10 @@ public class SimpleDemo {
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
         try {
-            Method a = InnerUdfMethod.class.getMethod("a", Number.class, Object.class);
-            Method b = InnerUdfMethod.class.getMethod("b", BigDecimal.class, BigDecimal.class);
-            Method c = InnerUdfMethod.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
-            Method d = InnerUdfMethod.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
+            Method a = UdfDemo.class.getMethod("a", Number.class, Object.class);
+            Method b = UdfDemo.class.getMethod("b", BigDecimal.class, BigDecimal.class);
+            Method c = UdfDemo.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class);
+            Method d = UdfDemo.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
 
             jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
             jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);

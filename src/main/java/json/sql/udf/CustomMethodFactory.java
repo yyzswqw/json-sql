@@ -11,6 +11,14 @@ public class CustomMethodFactory {
     public static void registerCustomMethod(JsonSqlContext jsonSqlContext) {
         try {
 
+            Method delIfNull = InnerUdfMethod.class.getMethod("delIfNull",DocumentContext.class,String[].class);
+            jsonSqlContext.registerFunction("delIfNull", delIfNull,String[].class);
+            jsonSqlContext.registerMacro("delIfNull",MacroEnum.CUR_WRITE_DOCUMENT);
+
+            Method del = InnerUdfMethod.class.getMethod("del",DocumentContext.class,String[].class);
+            jsonSqlContext.registerFunction("del", del,String[].class);
+            jsonSqlContext.registerMacro("del",MacroEnum.CUR_WRITE_DOCUMENT);
+
             Method formatAllLevel = InnerUdfMethod.class.getMethod("formatAllLevel",DocumentContext.class,String.class,String[].class);
             jsonSqlContext.registerFunction("formatAllLevel", formatAllLevel,String.class,String[].class);
             jsonSqlContext.registerMacro("formatAllLevel",MacroEnum.CUR_WRITE_DOCUMENT);

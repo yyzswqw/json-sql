@@ -5,25 +5,51 @@ import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import net.minidev.json.JSONArray;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 public class InnerUdfMethod {
 
-    public static int a(Number a,Object b){
-        return a.intValue();
+    /**
+     * 如果指定的jsonPath的值为空，则删除指定的jsonPath，jsonPath为空则默认删除全部
+     * @param curDocumentContext 当前写DocumentContext
+     * @param jsonPaths jsonPath，为空则默认删除全部
+     * @return 成功删除的jsonPath个数
+     */
+    public static Integer delIfNull(DocumentContext curDocumentContext, String ... jsonPaths) {
+        if(ObjectUtil.isEmpty(jsonPaths)){
+            jsonPaths = new String[]{"$.*"};
+        }
+        int result = 0;
+        for (String jsonPath : jsonPaths) {
+            try {
+                Object read = curDocumentContext.read(jsonPath);
+                if(Objects.isNull(read)){
+                    curDocumentContext.delete(jsonPath);
+                    result += 1;
+                }
+            }catch (Exception e){}
+        }
+        return result;
     }
 
-    public static int b(BigDecimal a, BigDecimal b){
-        return a.add(b).intValue();
-    }
-
-    public static int c(Object a1,Object a2,Object a3,Object a4,Object a5,BigDecimal a, BigDecimal b){
-        return a.add(b).intValue();
-    }
-
-    public static int d(Object a1, Object a2, Object a3, Object a4, DocumentContext a5){
-        return 2;
+    /**
+     * 删除指定的jsonPath，jsonPath为空则默认删除全部
+     * @param curDocumentContext 当前写DocumentContext
+     * @param jsonPaths jsonPath，为空则默认删除全部
+     * @return 成功删除的jsonPath个数
+     */
+    public static Integer del(DocumentContext curDocumentContext, String ... jsonPaths) {
+        if(ObjectUtil.isEmpty(jsonPaths)){
+            jsonPaths = new String[]{"$.*"};
+        }
+        int result = 0;
+        for (String jsonPath : jsonPaths) {
+            try {
+                curDocumentContext.delete(jsonPath);
+                result += 1;
+            }catch (Exception e){}
+        }
+        return result;
     }
 
     public static Object formatAllLevel(DocumentContext curDocumentContext, String jsonPath, String ... ignoreKeys) {
@@ -60,9 +86,9 @@ public class InnerUdfMethod {
     }
 
     /**
-     * 格式化json中的字符串json,将字符串的json转换为一个正常的json
+     * 格式化json中的字符串json,将字符串的json转换为一个正常的json，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
-     * @param jsonPath jsonPath
+     * @param jsonPath jsonPath，为空则默认为根路径
      * @param level 转换的最大层级
      * @param ignoreKeys 忽略的key
      * @return curDocumentContext下的所有内容
@@ -170,9 +196,9 @@ public class InnerUdfMethod {
 
 
     /**
-     * 返回数 组的 size,如果是对象，返回的是一级 key 的 个数
+     * 返回数 组的 size,如果是对象，返回的是一级 key 的 个数，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
-     * @param jsonPath jsonPath
+     * @param jsonPath jsonPath，为空则默认为根路径
      * @param objReturnSize 如果不是数组，是json对象，则是否返回json对象的一级key的个数，默认不返回
      * @return size
      */
@@ -219,9 +245,9 @@ public class InnerUdfMethod {
     }
 
     /**
-     * 获取jsonPath下的所有的value
+     * 获取jsonPath下的所有的value，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
-     * @param jsonPath root jsonpath
+     * @param jsonPath root jsonpath，为空则默认为根路径
      * @param level 获取value的最大层级
      * @param ignoreKeys 忽略的key
      * @return 所有的value
@@ -311,9 +337,9 @@ public class InnerUdfMethod {
     }
 
     /**
-     * 获取jsonPath下的所有的key
+     * 获取jsonPath下的所有的key，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
-     * @param jsonPath root jsonpath
+     * @param jsonPath root jsonpath，为空则默认为根路径
      * @param level 获取key的最大层级
      * @return 所有key
      */
@@ -410,11 +436,11 @@ public class InnerUdfMethod {
     }
 
     /**
-     * 将json 对象打平展开
+     * 将json 对象打平展开，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
      * @param tarJsonPath 目标jsonPath
      * @param putNewValue2TarJsonPath 是否需要将打平展开后的值放入 目标jsonPath
-     * @param jsonPath 需要打平展开的jsonPath
+     * @param jsonPath 需要打平展开的jsonPath，为空则默认为根路径
      * @param delOldJsonPath 是否删除打平展开前的jsonPath
      * @param arrayExplode 数组是否打平展开
      * @param arrayExplodeConcatIndex 数组打平展开时，key是否拼接下标，不拼接的话，同名key会被替换

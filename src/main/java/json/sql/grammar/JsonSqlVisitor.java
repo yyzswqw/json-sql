@@ -335,16 +335,15 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     @Override
     public Object visitSetExpression(SqlParser.SetExpressionContext ctx) {
+        SqlParser.CustomFunctionContext customFunctionContext = ctx.customFunction();
+        if(ObjectUtil.isNotEmpty(customFunctionContext)){
+            return visitCustomFunction(customFunctionContext);
+        }
         SqlParser.ColumnNameContext columnNameContext = ctx.columnName();
         String jsonPath = (String)visitColumnName(columnNameContext);
         SqlParser.RelationalExprContext relationalExprContext = ctx.relationalExpr();
         SqlParser.CaseExprContext caseExprContext = ctx.caseExpr();
-        SqlParser.DelColumnExprContext delColumnExprContext = ctx.delColumnExpr();
         String tableName = this.tableNameStack.peek();
-        if(delColumnExprContext != null){
-            delCol(tableName,jsonPath);
-            return null;
-        }
         Object value = null;
         if(relationalExprContext != null){
             value = visit(relationalExprContext);
