@@ -3,6 +3,10 @@ package json.sql.udf;
 import cn.hutool.core.util.ObjectUtil;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import json.sql.annotation.MacroParam;
+import json.sql.annotation.UdfMethod;
+import json.sql.annotation.UdfMethodIgnore;
+import json.sql.enums.MacroEnum;
 import net.minidev.json.JSONArray;
 
 import java.util.*;
@@ -15,7 +19,8 @@ public class InnerUdfMethod {
      * @param jsonPaths jsonPath，为空则默认删除全部
      * @return 成功删除的jsonPath个数
      */
-    public static Integer delIfNull(DocumentContext curDocumentContext, String ... jsonPaths) {
+    @UdfMethod(functionName = "delIfNull")
+    public static Integer delIfNull(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext, String ... jsonPaths) {
         if(ObjectUtil.isEmpty(jsonPaths)){
             jsonPaths = new String[]{"$.*"};
         }
@@ -38,7 +43,8 @@ public class InnerUdfMethod {
      * @param jsonPaths jsonPath，为空则默认删除全部
      * @return 成功删除的jsonPath个数
      */
-    public static Integer del(DocumentContext curDocumentContext, String ... jsonPaths) {
+    @UdfMethod(functionName = "del")
+    public static Integer del(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext, String ... jsonPaths) {
         if(ObjectUtil.isEmpty(jsonPaths)){
             jsonPaths = new String[]{"$.*"};
         }
@@ -52,11 +58,15 @@ public class InnerUdfMethod {
         return result;
     }
 
-    public static Object formatAllLevel(DocumentContext curDocumentContext, String jsonPath, String ... ignoreKeys) {
+    @UdfMethod(functionName = "formatAllLevel")
+    public static Object formatAllLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                        String jsonPath, String ... ignoreKeys) {
         return format(curDocumentContext, jsonPath, Long.MAX_VALUE, ignoreKeys);
     }
 
-    public static Object format(DocumentContext curDocumentContext, String jsonPath, Long level, String ... ignoreKeys) {
+    @UdfMethod(functionName = "format")
+    public static Object format(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                String jsonPath, Long level, String ... ignoreKeys) {
         String json = curDocumentContext.jsonString();
         DocumentContext parse = JsonPath.parse(json);
         if(ObjectUtil.isEmpty(jsonPath)){
@@ -93,6 +103,7 @@ public class InnerUdfMethod {
      * @param ignoreKeys 忽略的key
      * @return curDocumentContext下的所有内容
      */
+    @UdfMethodIgnore
     public static Object innerFormat(DocumentContext curDocumentContext, String jsonPath, Long level, String ... ignoreKeys) {
         if(ObjectUtil.isEmpty(level) || level < 0){
             return curDocumentContext.json();
@@ -216,7 +227,9 @@ public class InnerUdfMethod {
      * @param objReturnSize 如果不是数组，是json对象，则是否返回json对象的一级key的个数，默认不返回
      * @return size
      */
-    public static Long size(DocumentContext curDocumentContext, String jsonPath,Boolean objReturnSize) {
+    @UdfMethod(functionName = "size")
+    public static Long size(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                            String jsonPath,Boolean objReturnSize) {
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
             jsonPath = "$";
@@ -250,11 +263,15 @@ public class InnerUdfMethod {
         }
     }
 
-    public static Set<Object> values(DocumentContext curDocumentContext, String jsonPath, String ... ignoreKeys) {
+    @UdfMethod(functionName = "values")
+    public static Set<Object> values(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                     String jsonPath, String ... ignoreKeys) {
         return innerValues(curDocumentContext,jsonPath,Long.MAX_VALUE,ignoreKeys);
     }
 
-    public static Set<Object> valuesByLevel(DocumentContext curDocumentContext, String jsonPath,Long level, String ... ignoreKeys) {
+    @UdfMethod(functionName = "valuesByLevel")
+    public static Set<Object> valuesByLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                            String jsonPath,Long level, String ... ignoreKeys) {
         return innerValues(curDocumentContext,jsonPath,level,ignoreKeys);
     }
 
@@ -266,6 +283,7 @@ public class InnerUdfMethod {
      * @param ignoreKeys 忽略的key
      * @return 所有的value
      */
+    @UdfMethodIgnore
     public static Set<Object> innerValues(DocumentContext curDocumentContext, String jsonPath, Long level, String ... ignoreKeys) {
         Set<Object> result = new LinkedHashSet<>();
         if(ObjectUtil.isEmpty(level) || level < 0){
@@ -342,11 +360,15 @@ public class InnerUdfMethod {
         return result;
     }
 
-    public static Set<Object> keys(DocumentContext curDocumentContext, String jsonPath){
+    @UdfMethod(functionName = "keys")
+    public static Set<Object> keys(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                   String jsonPath){
         return innerKeys(curDocumentContext,jsonPath,Long.MAX_VALUE);
     }
 
-    public static Set<Object> keysByLevel(DocumentContext curDocumentContext, String jsonPath,Long level){
+    @UdfMethod(functionName = "keysByLevel")
+    public static Set<Object> keysByLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                          String jsonPath,Long level){
         return innerKeys(curDocumentContext,jsonPath,level);
     }
 
@@ -357,6 +379,7 @@ public class InnerUdfMethod {
      * @param level 获取key的最大层级
      * @return 所有key
      */
+    @UdfMethodIgnore
     public static Set<Object> innerKeys(DocumentContext curDocumentContext, String jsonPath, Long level) {
         Set<Object> result = new LinkedHashSet<>();
         if(ObjectUtil.isEmpty(level) || level < 0){
@@ -417,15 +440,20 @@ public class InnerUdfMethod {
         return result;
     }
 
-    public static Map<Object,Object> explode2(DocumentContext curDocumentContext, String jsonPath,Long level, String ... ignoreKeys){
+    @UdfMethod(functionName = "explode2")
+    public static Map<Object,Object> explode2(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                              String jsonPath,Long level, String ... ignoreKeys){
         return innerExplode(curDocumentContext,null,true,jsonPath,true,false,false,level,ignoreKeys);
     }
 
-    public static Map<Object,Object> explode3(DocumentContext curDocumentContext, String jsonPath, String ... ignoreKeys){
+    @UdfMethod(functionName = "explode3")
+    public static Map<Object,Object> explode3(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                              String jsonPath, String ... ignoreKeys){
         return innerExplode(curDocumentContext,null,true,jsonPath,true,false,false,Long.MAX_VALUE,ignoreKeys);
     }
 
-    public static Map<Object,Object> explode(DocumentContext curDocumentContext,
+    @UdfMethod(functionName = "explode")
+    public static Map<Object,Object> explode(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
                                              Boolean putNewValue2TarJsonPath,
                                              String jsonPath,Boolean delOldJsonPath,
                                              Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
@@ -433,7 +461,8 @@ public class InnerUdfMethod {
         return innerExplode(curDocumentContext,null,putNewValue2TarJsonPath,jsonPath,delOldJsonPath,arrayExplode,arrayExplodeConcatIndex,level,ignoreKeys);
     }
 
-    public static Map<Object,Object> explodeAllLevel2(DocumentContext curDocumentContext,
+    @UdfMethod(functionName = "explodeAllLevel2")
+    public static Map<Object,Object> explodeAllLevel2(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
                                                      Boolean putNewValue2TarJsonPath,
                                                      String jsonPath,Boolean delOldJsonPath,
                                                      Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
@@ -441,7 +470,8 @@ public class InnerUdfMethod {
         return explodeAllLevel(curDocumentContext,null,putNewValue2TarJsonPath,jsonPath,delOldJsonPath,arrayExplode,arrayExplodeConcatIndex,ignoreKeys);
     }
 
-    public static Map<Object,Object> explodeAllLevel(DocumentContext curDocumentContext,
+    @UdfMethod(functionName = "explodeAllLevel")
+    public static Map<Object,Object> explodeAllLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
                                                      String tarJsonPath, Boolean putNewValue2TarJsonPath,
                                                      String jsonPath,Boolean delOldJsonPath,
                                                      Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
@@ -462,6 +492,7 @@ public class InnerUdfMethod {
      * @param ignoreKeys 忽略打平展开的key
      * @return 打平展开后的值
      */
+    @UdfMethodIgnore
     public static Map<Object,Object> innerExplode(DocumentContext curDocumentContext,
                                                   String tarJsonPath, Boolean putNewValue2TarJsonPath,
                                                   String jsonPath,Boolean delOldJsonPath,

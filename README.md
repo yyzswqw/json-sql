@@ -19,7 +19,12 @@
   - select * from t1 where a in (select b from t2 where 1=1 as b)，select子句返回的是json串，需要后面使用as表达式说明使用的字段名称
 - 内置函数
 - 自定义UDF函数，注册后，使用时需要加上$前缀
-- 自定义UDF函数，支持宏变量,宏变量需要在所有参数的前面定义,最后一个参数可以是可变数组或者是集合（Collection类及其子类）或者Map类型（需要参数两两匹配，即key,value）
+- 自定义UDF函数，
+  - 支持宏变量,宏变量需要在所有参数的前面定义。
+  - 支持可变参数，数组、集合（Collection类及其子类）或者Map类型（Map类及其子类,需要参数两两匹配，即key,value）。
+  - 一个UDF函数有且仅有一个可变参数，位置可以是参数列表中任意位置，但必须在宏变量之后。
+  - 可变参数中List、Map类型支持注册参数泛型
+  - 注意：使用时，如果传递了可变参数，如果可变参数后面还有参数，则必传，如果没有传可变参数，则后面的参数可以不传。
 
 假设有下面一条JSON数据，在java中将其给变量json:
 
@@ -93,8 +98,8 @@
 
 - toJson('json')，将一个json字符串，转换为json对象
 - toJsonByPath(‘path')，将一个json path值的json字符串，转换为json对象
-- jsonpath('path')，获取一个json path值
-- del()，在update语句中，删除一个字段
+- jsonPath('path')，获取一个json path值
+- $del('path', ... ,'path')，删除一个或多个字段
 
 # 支持的宏
 
@@ -381,7 +386,7 @@ String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 !
 删除字段，使用del()函数
 
 ```java
-String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
+String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 ```
 
 结果为：
@@ -400,7 +405,7 @@ String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 3
 使用and和子查询in
 
 ```java
-String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
+String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
 ```
 
 结果为：
@@ -419,7 +424,7 @@ String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 3
 使用and和非子查询in
 
 ```java
-String sql = "update a1 SET jsonPath('$.store.book[0].category') = del(),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
+String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
 ```
 
 结果为：

@@ -1,9 +1,14 @@
 package json.sql;
 
+import cn.hutool.core.util.ObjectUtil;
+import json.sql.annotation.PackageAnnotationScanner;
+import json.sql.annotation.UdfClass;
+import json.sql.annotation.UdfMethod;
+import json.sql.annotation.UdfParser;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
 import json.sql.grammar.ParserErrorListener;
-import json.sql.udf.CustomMethodFactory;
+import json.sql.udf.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -11,6 +16,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class JsonSqlContext {
@@ -19,7 +25,34 @@ public class JsonSqlContext {
 
     public JsonSqlContext(){
         this.jsonSqlVisitor = new JsonSqlVisitor();
-        CustomMethodFactory.registerCustomMethod(this);
+        Set<Method> udfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(UdfMethod.class);
+        if(ObjectUtil.isNotEmpty(udfMethods)){
+            for (Method udfMethod : udfMethods) {
+                try {
+                    UdfParser.registerUdfMethod(this,udfMethod);
+                }catch (Exception e){
+                    Class<?>[] parameterTypes = udfMethod.getParameterTypes();
+                    // 获取所在类的 Class 对象
+                    Class<?> clazz = udfMethod.getDeclaringClass();
+                    log.info("注册udf 函数失败!class : {} ,method : {} ,parameterTypes : {}",clazz.getName(),udfMethod.getName(),parameterTypes);
+                    log.error("注册udf 函数失败!",e);
+                }
+            }
+        }
+        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(UdfClass.class);
+        if(ObjectUtil.isNotEmpty(classes)){
+            for (Class<?> aClass : classes) {
+                UdfParser.classParser(this,aClass, false, (Method[]) null);
+            }
+        }
+    }
+
+    /**
+     * 删除表
+     * @param tableName 表名
+     */
+    public void dropTable(String tableName) {
+        jsonSqlVisitor.dropTable(tableName);
     }
 
     /**
@@ -54,11 +87,55 @@ public class JsonSqlContext {
     /**
      * 注册自定义UDF函数
      * @param functionName 函数名
+     * @param method 实现的具体方法，只能是静态方法
+     * @param macros 宏参数列表
+     * @param argsType 参数列表，不包含宏参数
+     */
+    public void registerFunction(String functionName,Method method,MacroEnum[] macros,Class<?>[] argsType){
+        jsonSqlVisitor.registerFunction(functionName,method,macros,argsType);
+    }
+
+    /**
+     * 注册自定义UDF函数
+     * @param functionName 函数名
+     * @param method 实现的具体方法，只能是静态方法
+     * @param macros 宏参数列表
+     * @param argsType 参数列表，不包含宏参数
+     * @param variableArgsType 可变参数类型
+     * @param genericityArgsType 可变参数泛型类型
+     */
+    public void registerFunction(String functionName,Method method,MacroEnum[] macros,Class<?>[] argsType, Class<?> variableArgsType, TypeReference genericityArgsType){
+        jsonSqlVisitor.registerFunction(functionName,method,macros,argsType,variableArgsType,genericityArgsType);
+    }
+
+    /**
+     * 注册自定义UDF函数
+     * @param functionName 函数名
      * @param method 方法逻辑method,只能是静态方法
      * @param argsType 参数类型列表,不需要定义宏参数，宏参数使用registerMacro(String functionName, MacroEnum... macros) 注册;
      */
     public void registerFunction(String functionName, Method method, Class<?> ... argsType){
         jsonSqlVisitor.registerFunction(functionName,method,argsType);
+    }
+
+    /**
+     * 注册函数中可变参数的泛型类型
+     * @param functionName 函数名
+     * @param argsType 外层参数类型
+     * @param genericityArgsType 泛型类型
+     */
+    public void registerFunctionVariableArgsType(String functionName, Class<?> argsType, TypeReference genericityArgsType){
+        jsonSqlVisitor.registerFunctionVariableArgsType(functionName,argsType,genericityArgsType);
+    }
+
+    /**
+     * 获取函数中可变参数的泛型类型
+     * @param functionName 函数名
+     * @param argsType 外层参数类型
+     * @return 泛型类型
+     */
+    public TypeReference getFunctionVariableArgsType(String functionName, Class<?> argsType){
+        return jsonSqlVisitor.getFunctionVariableArgsType(functionName,argsType);
     }
 
     /**
@@ -68,6 +145,23 @@ public class JsonSqlContext {
      */
     public void registerMacro(String functionName, MacroEnum... macros) {
         jsonSqlVisitor.registerMacro(functionName,macros);
+    }
+
+    /**
+     * 获取 udf 函数参数列表
+     * @param functionName 函数名
+     * @return 参数列表
+     */
+    public Map<String,List<Class<?>>> getUdfFunction(String functionName){
+        return jsonSqlVisitor.getUdfFunction(functionName);
+    }
+
+    /**
+     * 获取所有 udf 函数参数列表
+     * @return 函数及其参数列表
+     */
+    public Map<String,List<Class<?>>> getAllUdfFunction(){
+        return jsonSqlVisitor.getAllUdfFunction();
     }
 
     /**

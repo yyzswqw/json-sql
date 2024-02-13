@@ -1,12 +1,16 @@
-package json.sql;
+package json.sql.demo;
 
 import com.jayway.jsonpath.DocumentContext;
+import json.sql.JsonSqlContext;
 import json.sql.config.TableConfig;
 import json.sql.enums.MacroEnum;
-import json.sql.udf.UdfDemo;
+import json.sql.udf.ListTypeReference;
+import json.sql.udf.MapTypeReference;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 public class SimpleDemo {
 
@@ -59,7 +63,7 @@ public class SimpleDemo {
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode(true,'store.bicycle',true,true,false,1,'abc','abcd1'),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $valuesByLevel('store.bicycle',10,'xvb1'),temp2Size = $size('store.temp2'),size = $size('ab',true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp4',2,'a'),age = jsonPath('age')%4 + age";
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),ab = $explode(true,'store.bicycle',true,true,false,1),age = jsonPath('age')%4 + age,delIfNull('age')";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),ab = $explode(true,'store.bicycle',true,true,false,1),age = jsonPath('age')%4 + age,$delIfNull('age') where $f(1,2,3,4,5,6) > 0 and $f1(1,2,3,4,5,6) > 0 and $f2(1,2,3,4,5,6) > 0";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -122,6 +126,34 @@ public class SimpleDemo {
 
             jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
             jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+
+            Method e = UdfDemo.class.getMethod("e", Object.class,Object.class,String[].class);
+            Method e1 = UdfDemo.class.getMethod("e1", Object.class,String[].class,Object.class);
+            Method e2 = UdfDemo.class.getMethod("e2", String[].class,Object.class,Object.class);
+            jsonSqlContext.registerFunction("e", e,Object.class, Object.class,String[].class);
+            jsonSqlContext.registerFunction("e1", e1,Object.class,String[].class,Object.class);
+            jsonSqlContext.registerFunction("e2", e2,String[].class,Object.class,Object.class);
+
+            Method f = UdfDemo.class.getMethod("f", Object.class,Object.class, List.class);
+            Method f1 = UdfDemo.class.getMethod("f1", Object.class,List.class,Object.class);
+            Method f2 = UdfDemo.class.getMethod("f2", List.class,Object.class,Object.class);
+            jsonSqlContext.registerFunction("f", f,Object.class,Object.class, List.class);
+            jsonSqlContext.registerFunction("f1", f1,Object.class,List.class,Object.class);
+            jsonSqlContext.registerFunction("f2", f2,List.class,Object.class,Object.class);
+            jsonSqlContext.registerFunctionVariableArgsType("f",List.class,new ListTypeReference(String.class));
+            jsonSqlContext.registerFunctionVariableArgsType("f1",List.class,new ListTypeReference(String.class));
+            jsonSqlContext.registerFunctionVariableArgsType("f2",List.class,new ListTypeReference(String.class));
+
+            Method g = UdfDemo.class.getMethod("g", Object.class,Object.class, Map.class);
+            Method g1 = UdfDemo.class.getMethod("g1", Object.class,Map.class,Object.class);
+            Method g2 = UdfDemo.class.getMethod("g2", Map.class,Object.class,Object.class);
+            jsonSqlContext.registerFunction("g", g,Object.class,Object.class, Map.class);
+            jsonSqlContext.registerFunction("g1", g1,Object.class,Map.class,Object.class);
+            jsonSqlContext.registerFunction("g2", g2,Map.class,Object.class,Object.class);
+            jsonSqlContext.registerFunctionVariableArgsType("g", Map.class, new MapTypeReference(String.class,String.class));
+            jsonSqlContext.registerFunctionVariableArgsType("g1", Map.class, new MapTypeReference(String.class,String.class));
+            jsonSqlContext.registerFunctionVariableArgsType("g2", Map.class, new MapTypeReference(String.class,String.class));
+
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);

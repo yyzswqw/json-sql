@@ -12,6 +12,9 @@ import json.sql.entity.TableContext;
 import json.sql.enums.MacroEnum;
 import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
+import json.sql.udf.ListTypeReference;
+import json.sql.udf.MapTypeReference;
+import json.sql.udf.TypeReference;
 import json.sql.util.CompareUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -36,6 +39,7 @@ import java.util.regex.Pattern;
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     private Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
+    private Table<String,Class<?>,TypeReference> variableArgsTypeTable = HashBasedTable.create();
     private Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
     private Map<String, TableContext> tableDataMap = Maps.newHashMap();
@@ -43,8 +47,39 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     private static final String MAIN_TABLE_NAME = "__$$main_table_name$$__";
 
     private static final Pattern colNamePattern = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*$");
+    private static final TypeReference defaultListTypeReference = new ListTypeReference(Object.class);
+    private static final TypeReference defaultMapTypeReference = new MapTypeReference(Object.class,Object.class);
 
     // region ======================== api start ===================================
+
+    /**
+     * 注册自定义UDF函数
+     * @param functionName 函数名
+     * @param method 实现的具体方法，只能是静态方法
+     * @param macros 宏参数列表
+     * @param argsType 参数列表，不包含宏参数
+     */
+    public void registerFunction(String functionName,Method method,MacroEnum[] macros,Class<?>[] argsType){
+        this.registerFunction(functionName,method,argsType);
+        this.registerMacro(functionName,macros);
+    }
+
+    /**
+     * 注册自定义UDF函数
+     * @param functionName 函数名
+     * @param method 实现的具体方法，只能是静态方法
+     * @param macros 宏参数列表
+     * @param argsType 参数列表，不包含宏参数
+     * @param variableArgsType 可变参数类型
+     * @param genericityArgsType 可变参数泛型类型
+     */
+    public void registerFunction(String functionName,Method method,MacroEnum[] macros,Class<?>[] argsType, Class<?> variableArgsType, TypeReference genericityArgsType){
+        this.registerFunction(functionName,method,argsType);
+        this.registerMacro(functionName,macros);
+        if(ObjectUtil.isAllNotEmpty(variableArgsType,genericityArgsType)){
+            this.registerFunctionVariableArgsType(functionName,variableArgsType,genericityArgsType);
+        }
+    }
 
     /**
      * 注册自定义UDF函数
@@ -64,9 +99,51 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     /**
+     * 注册函数中可变参数的泛型类型
+     * @param functionName 函数名
+     * @param argsType 外层参数类型
+     * @param genericityArgsType 泛型类型
+     */
+    public void registerFunctionVariableArgsType(String functionName, Class<?> argsType, TypeReference genericityArgsType){
+        if(argsType == null || genericityArgsType == null ){
+            throw new RuntimeException("参数不正确 function : "+functionName);
+        }else{
+            if (this.variableArgsTypeTable.containsRow(functionName)) {
+                throw new RuntimeException("已存在 function : "+functionName +" 可变参数泛型定义");
+            }
+            this.variableArgsTypeTable.put(functionName,argsType,genericityArgsType);
+        }
+    }
+
+    /**
+     * 获取函数中可变参数的泛型类型
+     * @param functionName 函数名
+     * @param argsType 外层参数类型
+     * @return 泛型类型
+     */
+    public TypeReference getFunctionVariableArgsType(String functionName, Class<?> argsType){
+        if(argsType == null || functionName == null ){
+            throw new RuntimeException("参数不正确");
+        }else{
+            TypeReference typeReference = this.variableArgsTypeTable.get(functionName, argsType);
+            if(ObjectUtil.isNotEmpty(typeReference)){
+                return typeReference;
+            }
+            if(Collection.class.isAssignableFrom(argsType)){
+                return defaultListTypeReference;
+            }
+            if(Map.class.isAssignableFrom(argsType)){
+                return defaultMapTypeReference;
+            }
+            return null;
+        }
+    }
+
+
+    /**
      * 注册函数宏参数，宏参数必须定义在函数的最开始的参数
      * @param functionName 函数名
-     * @param macros 参数宏列表
+     * @param macros 宏参数列表
      */
     public void registerMacro(String functionName,MacroEnum ... macros) {
         if(macros == null || macros.length == 0){
@@ -76,6 +153,68 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 throw new RuntimeException("已存在 macro : "+functionName);
             }
             this.macroMap.put(functionName,Arrays.asList(macros));
+        }
+    }
+
+    /**
+     * 获取 udf 函数参数列表
+     * @param functionName 函数名
+     * @return 参数列表
+     */
+    public Map<String,List<Class<?>>> getUdfFunction(String functionName){
+        Map<String,List<Class<?>>> result = new HashMap<>();
+        if(ObjectUtil.isEmpty(functionName)){
+            return result;
+        }
+        Map<Method, List<Class<?>>> row = this.methodTable.row(functionName);
+        if(ObjectUtil.isEmpty(row)){
+            return result;
+        }
+        Collection<List<Class<?>>> values = row.values();
+        if(ObjectUtil.isEmpty(values)){
+            result.put(functionName,new ArrayList<>());
+            return result;
+        }
+        result.put(functionName,values.stream().findFirst().orElse(new ArrayList<>()));
+        return result;
+    }
+
+    /**
+     * 获取所有 udf 函数参数列表
+     * @return 函数及其参数列表
+     */
+    public Map<String,List<Class<?>>> getAllUdfFunction(){
+        Map<String,List<Class<?>>> result = new HashMap<>();
+        Map<String, Map<Method, List<Class<?>>>> udfMethodMap = this.methodTable.rowMap();
+        if(ObjectUtil.isEmpty(udfMethodMap)){
+            return result;
+        }
+        for (Map.Entry<String, Map<Method, List<Class<?>>>> udfMethodMapEntry : udfMethodMap.entrySet()) {
+            String functionName = udfMethodMapEntry.getKey();
+            Map<Method, List<Class<?>>> udfMap = udfMethodMapEntry.getValue();
+            Collection<List<Class<?>>> values = udfMap.values();
+            if(ObjectUtil.isEmpty(values)){
+                result.put(functionName,new ArrayList<>());
+                continue;
+            }
+            result.put(functionName,values.stream().findFirst().orElse(new ArrayList<>()));
+        }
+        return result;
+    }
+
+    /**
+     * 删除表
+     * @param tableName 表名
+     */
+    public void dropTable(String tableName) {
+        if(ObjectUtil.hasEmpty(tableName)){
+            throw new RuntimeException("表名不能为空");
+        }
+        TableContext tableContext = this.tableDataMap.remove(tableName);
+        if(ObjectUtil.isNotEmpty(tableContext)){
+            tableContext.setDocument(null);
+            tableContext.setNewDocument(null);
+            tableContext.setOriginalJson(null);
         }
     }
 
@@ -944,94 +1083,121 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                         result = method.invoke(null);
                     }
                 }else{
+                    int curArgsIndex = 0;
                     for (int i = 0; i < argsTypeClasses.size(); i++) {
                         Class<?> aClass = argsTypeClasses.get(i);
                         Object innerArg = null;
-                        if(i < innerArgs.size()){
-                            innerArg = innerArgs.get(i);
+                        if(curArgsIndex < innerArgs.size()){
+                            innerArg = innerArgs.get(curArgsIndex);
                         }
-                        // 如果是最后一个参数，并且是可变长度的数组或者集合，将剩下所有的参数封装进去
-                        if(i == argsTypeClasses.size() - 1){
-                            if (aClass.isArray()) {
-                                // 获取数组元素的类型
-                                Class<?> componentType = aClass.getComponentType();
-                                if (ObjectUtil.isEmpty(innerArgs) || innerArgs.size() - i < 0) {
-                                    innerArgsList.add(null);
-                                    break ;
-                                }
-                                Object arguments = Array.newInstance(componentType, innerArgs.size() - i);
-                                int j = 0;
-                                for (;i < innerArgs.size(); i++){
-                                    Object convert = null;
-                                    innerArg = innerArgs.get(i);
-                                    try {
-                                        convert = Convert.convert(componentType,innerArg);
-                                    }catch (Exception e){
-                                        e.printStackTrace();
+
+//                        解析可变函数
+                        if(aClass.isArray() || Map.class.isAssignableFrom(aClass) || Collection.class.isAssignableFrom(aClass)){
+                            int otherArgsNum = argsTypeClasses.size() - (i + 1);
+                            int variableArgsNum = innerArgs.size() - otherArgsNum - i;
+                            if(variableArgsNum <= 0){
+                                // 没有传可变参数
+                                innerArgsList.add(null);
+                            }else{
+                                if (aClass.isArray()) {
+                                    // 获取数组元素的类型
+                                    Class<?> componentType = aClass.getComponentType();
+                                    if (ObjectUtil.isEmpty(innerArgs) || innerArgs.size() - curArgsIndex < 0) {
+                                        innerArgsList.add(null);
+                                        break ;
                                     }
-                                    Array.set(arguments, j++, convert);
-                                }
-                                innerArgsList.add(arguments);
-                                break ;
-                            }else if (Map.class.isAssignableFrom(aClass)) {
-                                Map<Object,Object> temp = new LinkedHashMap<>();
-                                Object innerArgKey = null;
-                                Object innerArgValue = null;
-                                for (;i < innerArgs.size(); i+=2){
-                                    Object convert = null;
-                                    innerArgKey = null;
-                                    innerArgKey = innerArgs.get(i);
-                                    innerArgValue = null;
-                                    if(i+1 < innerArgs.size()){
-                                        innerArgValue = innerArgs.get(i+1);
+                                    Object arguments = Array.newInstance(componentType, variableArgsNum);
+                                    int j = 0;
+                                    while (j+i < innerArgs.size() - otherArgsNum) {
+                                        Object convert = null;
+                                        innerArg = innerArgs.get(j+i);
                                         try {
-                                            convert = Convert.convert(Object.class,innerArgValue);
+                                            convert = Convert.convert(componentType,innerArg);
                                         }catch (Exception e){
                                             e.printStackTrace();
                                         }
+                                        Array.set(arguments, j++, convert);
                                     }
-                                    if(ObjectUtil.isNotEmpty(innerArgKey)){
-                                        temp.put(innerArgKey,convert);
+                                    innerArgsList.add(arguments);
+                                    curArgsIndex += j;
+                                    continue ;
+                                }
+                                else if (Map.class.isAssignableFrom(aClass)) {
+                                    Map<Object,Object> temp = new LinkedHashMap<>();
+                                    Object innerArgKey = null;
+                                    Object innerArgValue = null;
+                                    Class<?> keyClazz = Object.class;
+                                    Class<?> valueClazz = Object.class;
+                                    TypeReference functionVariableArgsType = getFunctionVariableArgsType(methodName, aClass);
+                                    if(ObjectUtil.isNotEmpty(functionVariableArgsType)){
+                                        keyClazz = functionVariableArgsType.getArgGenericityType1();
+                                        valueClazz = functionVariableArgsType.getArgGenericityType2();
                                     }
-                                }
-                                Object convert = null;
-                                try {
-                                    convert = Convert.convert(aClass, temp);
-                                }catch (Exception e){
-                                    e.printStackTrace();
-                                }
-                                innerArgsList.add(convert);
-                                break ;
-                            }else if (Collection.class.isAssignableFrom(aClass)) {
-                                List<Object> temp = new ArrayList<>();
-                                for (;i < innerArgs.size(); i++){
+                                    int j = 0;
+                                    for (;j+i < innerArgs.size() - otherArgsNum;j+=2) {
+                                        Object convert = null;
+                                        innerArgKey = null;
+                                        innerArgKey = innerArgs.get(j+i);
+                                        innerArgValue = null;
+                                        try {
+                                            innerArgKey = Convert.convert(keyClazz,innerArgKey);
+                                        }catch (Exception e){
+                                            e.printStackTrace();
+                                        }
+                                        if(j+i+1 < innerArgs.size()){
+                                            innerArgValue = innerArgs.get(j+i+1);
+                                            try {
+                                                convert = Convert.convert(valueClazz,innerArgValue);
+                                            }catch (Exception e){
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                        if(ObjectUtil.isNotEmpty(innerArgKey)){
+                                            temp.put(innerArgKey,convert);
+                                        }
+                                    }
                                     Object convert = null;
-                                    innerArg = innerArgs.get(i);
                                     try {
-                                        convert = Convert.convert(Object.class,innerArg);
+                                        convert = Convert.convert(aClass, temp);
                                     }catch (Exception e){
                                         e.printStackTrace();
                                     }
-                                    temp.add(convert);
+                                    innerArgsList.add(convert);
+                                    curArgsIndex += j;
+                                    continue ;
                                 }
-                                Object convert = null;
-                                try {
-                                    convert = Convert.convert(aClass, temp);
-                                }catch (Exception e){
-                                    e.printStackTrace();
+                                else if (Collection.class.isAssignableFrom(aClass)) {
+                                    List<Object> temp = new ArrayList<>();
+                                    Class<?> valueClazz = Object.class;
+                                    TypeReference functionVariableArgsType = getFunctionVariableArgsType(methodName, aClass);
+                                    if(ObjectUtil.isNotEmpty(functionVariableArgsType)){
+                                        valueClazz = functionVariableArgsType.getArgGenericityType1();
+                                    }
+                                    int j = 0;
+                                    while (j+i < innerArgs.size() - otherArgsNum) {
+                                        Object convert = null;
+                                        innerArg = innerArgs.get(j+i);
+                                        try {
+                                            convert = Convert.convert(valueClazz,innerArg);
+                                        }catch (Exception e){
+                                            e.printStackTrace();
+                                        }
+                                        temp.add(convert);
+                                        j++;
+                                    }
+                                    Object convert = null;
+                                    try {
+                                        convert = Convert.convert(aClass, temp);
+                                    }catch (Exception e){
+                                        e.printStackTrace();
+                                    }
+                                    innerArgsList.add(convert);
+                                    curArgsIndex += j;
+                                    continue ;
                                 }
-                                innerArgsList.add(convert);
-                                break ;
-                            }else {
-                                Object convert = null;
-                                try {
-                                    convert = Convert.convert(aClass,innerArg);
-                                }catch (Exception e){
-                                    e.printStackTrace();
-                                }
-                                innerArgsList.add(convert);
                             }
-                        } else {
+                        }
+                        else {
                             Object convert = null;
                             try {
                                 convert = Convert.convert(aClass,innerArg);
@@ -1039,6 +1205,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                                 e.printStackTrace();
                             }
                             innerArgsList.add(convert);
+                            curArgsIndex++;
                         }
                     }
                     result = method.invoke(null, innerArgsList.toArray());
