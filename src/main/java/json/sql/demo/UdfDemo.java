@@ -15,7 +15,7 @@ public class UdfDemo {
         return a.add(b).intValue();
     }
 
-    public static int c(Object a1,Object a2,Object a3,Object a4,Object a5,BigDecimal a, BigDecimal b){
+    public static int c(Object a1,Object a2,Object a3,Object a4,Object a5,BigDecimal a, BigDecimal b,List<String> a6){
         return a.add(b).intValue();
     }
 

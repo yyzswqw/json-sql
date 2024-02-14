@@ -41,13 +41,13 @@ public enum MacroEnum {
      */
     ,ALL_TABLE_NAME
     /*
-     * 指定表不可操作的数据，不可操作意味着对该对象的修改不会影响现有的表中的数据
+     * 获取指定表不可操作的数据，不可操作意味着对该对象的修改不会影响现有的表中的数据，需搭配宏参数CUR_CONTEXT_PROXY使用
      * java.util.Map<String,com.jayway.jsonpath.DocumentContext> 类型
      */
     ,TABLE_NOT_OPERABLE_DATA
     /*
-     * 指定表可操作的数据，可操作意味着对该对象的修改会影响现有的表中的数据
-     * java.util.Map<String,com.jayway.jsonpath.DocumentContext> 类型
+     * 获取指定表可操作的数据，可操作意味着对该对象的修改会影响现有的表中的数据
+     * java.util.Map<String,com.jayway.jsonpath.DocumentContext> 类型，需搭配宏参数CUR_CONTEXT_PROXY使用
      */
     ,TABLE_OPERABLE_DATA
     /*

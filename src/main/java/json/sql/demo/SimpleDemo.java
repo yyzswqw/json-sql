@@ -1,8 +1,16 @@
 package json.sql.demo;
 
+import com.jayway.jsonpath.DocumentContext;
 import json.sql.JsonSqlContext;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
+import json.sql.entity.UdfFunctionDescInfo;
+import json.sql.entity.UdfParamDescInfo;
+import json.sql.enums.MacroEnum;
+
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.List;
 
 public class SimpleDemo {
 
@@ -116,5 +124,52 @@ public class SimpleDemo {
         UdfParser.classParser(jsonSqlContext,UdfDemo.class, false,(String[])null);
     }
 
+    // 手动注册自定义UDF函数
+    public static void registerDemo(JsonSqlContext jsonSqlContext){
+        try {
+            Method a = UdfDemo.class.getMethod("a", Number.class, Object.class);
+            Method b = UdfDemo.class.getMethod("b", BigDecimal.class, BigDecimal.class);
+            Method c = UdfDemo.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class, List.class);
+            Method d = UdfDemo.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
+
+            // 注册 udf 函数
+            jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
+            jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
+            jsonSqlContext.registerFunction("c", c,BigDecimal.class, BigDecimal.class, List.class);
+            jsonSqlContext.registerFunction("d", d);
+
+            // 注册宏参数变量
+            jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+            jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT, MacroEnum.CUR_WRITE_DOCUMENT);
+
+            UdfFunctionDescInfo udfFunctionDescInfo = new UdfFunctionDescInfo();
+            udfFunctionDescInfo.setFunctionName("c");
+            udfFunctionDescInfo.setFunctionDesc("c");
+            udfFunctionDescInfo.setReturnType("int");
+
+            UdfParamDescInfo paramDescInfo1 = new UdfParamDescInfo();
+            paramDescInfo1.setParamName("a");
+            paramDescInfo1.setParamDesc("a");
+            paramDescInfo1.setParamType("BigDecimal");
+            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo1);
+
+            UdfParamDescInfo paramDescInfo2 = new UdfParamDescInfo();
+            paramDescInfo2.setParamName("b");
+            paramDescInfo2.setParamDesc("b");
+            paramDescInfo2.setParamType("BigDecimal");
+            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo2);
+
+            UdfParamDescInfo paramDescInfo3 = new UdfParamDescInfo();
+            paramDescInfo3.setParamName("a6");
+            paramDescInfo3.setParamDesc("a6");
+            paramDescInfo3.setParamType("List<String>");
+            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo3);
+            // 注册函数描述信息
+            jsonSqlContext.registerFunctionDescInfo("c", udfFunctionDescInfo);
+
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 }

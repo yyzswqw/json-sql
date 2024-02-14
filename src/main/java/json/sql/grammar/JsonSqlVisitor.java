@@ -880,11 +880,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                     visit(ctx.setClause());
                     return 1;
                 }
-                log.info("条件满足");
                 this.tableNameStack.pop();
                 return 0;
             } else {
-                log.info("条件不满足");
                 this.tableNameStack.pop();
                 return 0;
             }
@@ -893,7 +891,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             if (ctx.setClause() != null) {
                 visit(ctx.setClause());
             }
-            log.info("没有条件");
             this.tableNameStack.pop();
             return 1;
         }

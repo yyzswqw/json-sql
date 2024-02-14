@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 
 public class InnerUdfMethod {
 
-    @UdfMethod(functionName = "rename",desc = "获取指定表的数据")
+    @UdfMethod(functionName = "rename",desc = "重命名key")
     public static Integer rename(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
                           @UdfParam(desc = "需要改名的jsonPath路径") String jsonPath
                           ,@UdfParam(desc = "旧的名称") String oldName,@UdfParam(desc = "新的名称") String newName) {

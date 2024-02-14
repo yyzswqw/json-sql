@@ -40,6 +40,7 @@ public class CustomMethodFactory {
                 UdfParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
             }
         }
+        UdfParser.classParser(jsonSqlContext,ObjectUtil.class, false, (Method[])null);
     }
 
 }

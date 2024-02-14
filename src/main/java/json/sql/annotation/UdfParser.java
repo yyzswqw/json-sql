@@ -55,7 +55,9 @@ public class UdfParser {
                 registerUdfMethod(jsonSqlContext, method);
             }catch (Exception e){
                 log.info("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
-                log.error("注册udf 函数失败!",e);
+                if (log.isDebugEnabled()) {
+                    log.debug("注册udf 函数失败!",e);
+                }
             }
 
         }
@@ -95,7 +97,9 @@ public class UdfParser {
                 registerUdfMethod(jsonSqlContext, method);
             }catch (Exception e){
                 log.info("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
-                log.error("注册udf 函数失败!",e);
+                if (log.isDebugEnabled()) {
+                    log.debug("注册udf 函数失败!",e);
+                }
             }
         }
     }
@@ -318,6 +322,9 @@ public class UdfParser {
      * @return true:是，false:否
      */
     public static boolean checkUdfMethod(Method method) {
+        if(ObjectUtil.isEmpty(method)){
+            return false;
+        }
         // 获取参数列表
         Class<?>[] parameterTypes = method.getParameterTypes();
         Parameter[] parameters = method.getParameters();
@@ -333,6 +340,9 @@ public class UdfParser {
                 continue;
             }
             if(macroIndex != i){
+                if (log.isDebugEnabled()) {
+                    log.debug("check udf method result : false . reason : {} , methodName : {} , parameterTypes : {}","参数列表中宏参数不都在参数列表的最前面",method.getName(),parameterTypes);
+                }
                 return false;
             }
             macroIndex ++;
@@ -349,6 +359,9 @@ public class UdfParser {
             if(parameterType.isArray() || Map.class.isAssignableFrom(parameterType) || Collection.class.isAssignableFrom(parameterType)){
                 variableArgsNum +=1 ;
                 if(variableArgsNum > 1){
+                    if (log.isDebugEnabled()) {
+                        log.debug("check udf method result : false . reason : {} , methodName : {} , parameterTypes : {}","可变参数不止一个",method.getName(),parameterTypes);
+                    }
                     return false;
                 }
             }
