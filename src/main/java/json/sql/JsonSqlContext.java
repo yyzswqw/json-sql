@@ -1,22 +1,23 @@
 package json.sql;
 
+import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
 import json.sql.annotation.PackageAnnotationScanner;
 import json.sql.annotation.UdfClass;
 import json.sql.annotation.UdfMethod;
 import json.sql.annotation.UdfParser;
+import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
 import json.sql.grammar.ParserErrorListener;
+import json.sql.udf.CustomMethodFactory;
 import json.sql.udf.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 public class JsonSqlContext {
@@ -25,26 +26,7 @@ public class JsonSqlContext {
 
     public JsonSqlContext(){
         this.jsonSqlVisitor = new JsonSqlVisitor();
-        Set<Method> udfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(UdfMethod.class);
-        if(ObjectUtil.isNotEmpty(udfMethods)){
-            for (Method udfMethod : udfMethods) {
-                try {
-                    UdfParser.registerUdfMethod(this,udfMethod);
-                }catch (Exception e){
-                    Class<?>[] parameterTypes = udfMethod.getParameterTypes();
-                    // 获取所在类的 Class 对象
-                    Class<?> clazz = udfMethod.getDeclaringClass();
-                    log.info("注册udf 函数失败!class : {} ,method : {} ,parameterTypes : {}",clazz.getName(),udfMethod.getName(),parameterTypes);
-                    log.error("注册udf 函数失败!",e);
-                }
-            }
-        }
-        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(UdfClass.class);
-        if(ObjectUtil.isNotEmpty(classes)){
-            for (Class<?> aClass : classes) {
-                UdfParser.classParser(this,aClass, false, (Method[]) null);
-            }
-        }
+        CustomMethodFactory.registerCustomMethod(this);
     }
 
     /**
@@ -82,6 +64,60 @@ public class JsonSqlContext {
      */
     public void setTableConfig(String tableName,String key,Object value) {
         jsonSqlVisitor.setTableConfig(tableName, key,value);
+    }
+
+    /**
+     * 注册udf函数描述信息
+     * @param functionName 函数名
+     * @param functionDescInfo 描述信息
+     */
+    public void registerFunctionDescInfo(String functionName, UdfFunctionDescInfo functionDescInfo){
+        jsonSqlVisitor.registerFunctionDescInfo(functionName,functionDescInfo);
+    }
+
+    /**
+     * 获取udf函数描述信息
+     * @param functionName 函数名
+     * @return udf函数描述信息
+     */
+    public UdfFunctionDescInfo getFunctionDescInfo(String functionName){
+        return jsonSqlVisitor.getFunctionDescInfo(functionName);
+    }
+
+    /**
+     * 获取所有udf函数描述信息
+     * @return udf函数描述信息
+     */
+    public Collection<UdfFunctionDescInfo> getAllFunctionDescInfo(){
+        Collection<UdfFunctionDescInfo> allFunctionDescInfo = jsonSqlVisitor.getAllFunctionDescInfo();
+        if(ObjectUtil.isNotEmpty(allFunctionDescInfo)){
+            return Collections.unmodifiableCollection(allFunctionDescInfo);
+        }
+        return null;
+    }
+
+    /**
+     * 获取所有注册的表名
+     * @return  所有注册的表名
+     */
+    public Set<String> getAllTableName(){
+        return jsonSqlVisitor.getAllTableName();
+    }
+
+    /**
+     * 打印一个 udf 函数描述信息
+     */
+    public void showUdfDesc(String functionName){
+        String desc = jsonSqlVisitor.showUdfDesc(functionName);
+        Console.log(desc);
+    }
+
+    /**
+     * 打印所有udf 函数描述信息
+     */
+    public void showUdfDesc(){
+        String desc = jsonSqlVisitor.showUdfDesc();
+        Console.log(desc);
     }
 
     /**
@@ -153,7 +189,12 @@ public class JsonSqlContext {
      * @return 参数列表
      */
     public Map<String,List<Class<?>>> getUdfFunction(String functionName){
-        return jsonSqlVisitor.getUdfFunction(functionName);
+        Map<String, List<Class<?>>> udfFunction = jsonSqlVisitor.getUdfFunction(functionName);
+        if(ObjectUtil.isNotEmpty(udfFunction)){
+            return Collections.unmodifiableMap(udfFunction);
+        }
+        return null;
+
     }
 
     /**
@@ -161,7 +202,11 @@ public class JsonSqlContext {
      * @return 函数及其参数列表
      */
     public Map<String,List<Class<?>>> getAllUdfFunction(){
-        return jsonSqlVisitor.getAllUdfFunction();
+        Map<String, List<Class<?>>> allUdfFunction = jsonSqlVisitor.getAllUdfFunction();
+        if(ObjectUtil.isNotEmpty(allUdfFunction)){
+            return Collections.unmodifiableMap(allUdfFunction);
+        }
+        return null;
     }
 
     /**

@@ -7,8 +7,12 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.jayway.jsonpath.*;
+import json.sql.CurContextProxy;
+import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.TableContext;
+import json.sql.entity.UdfFunctionDescInfo;
+import json.sql.entity.UdfParamDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.parse.SqlBaseVisitor;
 import json.sql.parse.SqlParser;
@@ -16,6 +20,7 @@ import json.sql.udf.ListTypeReference;
 import json.sql.udf.MapTypeReference;
 import json.sql.udf.TypeReference;
 import json.sql.util.CompareUtil;
+import json.sql.util.MacroParamArgsContext;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
@@ -38,17 +43,47 @@ import java.util.regex.Pattern;
 @Slf4j
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
+    /**
+     * 所有udf 函数
+     */
     private Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
+    /**
+     * udf 函数中的可变参数(list、map)的泛型（一个udf函数有且仅有一个可变参数）
+     */
     private Table<String,Class<?>,TypeReference> variableArgsTypeTable = HashBasedTable.create();
+    /**
+     * udf 函数宏信息
+     */
     private Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
+    /**
+     * udf函数描述信息
+     */
+    private Map<String, UdfFunctionDescInfo> udfFunctionDescInfoMap = Maps.newHashMap();
+    /**
+     * 所有表数据
+     */
     private Map<String, TableContext> tableDataMap = Maps.newHashMap();
+    /**
+     * 当前操作的表的栈
+     */
     private Stack<String> tableNameStack = new Stack<>();
+    /**
+     * 主表表名
+     */
     private static final String MAIN_TABLE_NAME = "__$$main_table_name$$__";
 
     private static final Pattern colNamePattern = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*$");
+    /**
+     *  udf 函数中的list类型可变参数的默认泛型
+     */
     private static final TypeReference defaultListTypeReference = new ListTypeReference(Object.class);
+    /**
+     *  udf 函数中的map类型可变参数的默认泛型
+     */
     private static final TypeReference defaultMapTypeReference = new MapTypeReference(Object.class,Object.class);
+
+    private CurContextProxy curContextProxy = new CurContextProxy(this);
 
     // region ======================== api start ===================================
 
@@ -62,6 +97,131 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     public void registerFunction(String functionName,Method method,MacroEnum[] macros,Class<?>[] argsType){
         this.registerFunction(functionName,method,argsType);
         this.registerMacro(functionName,macros);
+    }
+
+    /**
+     * 注册udf函数描述信息
+     * @param functionName 函数名
+     * @param functionDescInfo 描述信息
+     */
+    public void registerFunctionDescInfo(String functionName,UdfFunctionDescInfo functionDescInfo){
+        if(ObjectUtil.isEmpty(functionName) || ObjectUtil.isEmpty(functionDescInfo)){
+            return;
+        }else{
+            if (this.udfFunctionDescInfoMap.containsKey(functionName)) {
+                throw new RuntimeException("已存在 function : "+functionName +" 描述信息");
+            }
+            this.udfFunctionDescInfoMap.put(functionName,functionDescInfo);
+        }
+    }
+
+    /**
+     * 获取udf函数描述信息
+     * @param functionName 函数名
+     * @return udf函数描述信息
+     */
+    public UdfFunctionDescInfo getFunctionDescInfo(String functionName){
+        if(ObjectUtil.isEmpty(functionName)){
+            return null;
+        }
+        UdfFunctionDescInfo descInfo = this.udfFunctionDescInfoMap.get(functionName);
+        if(ObjectUtil.isEmpty(descInfo)){
+            Map<Method, List<Class<?>>> row = this.methodTable.row(functionName);
+            if(ObjectUtil.isEmpty(row)){
+                return null;
+            }
+            Method method = row.keySet().stream().findFirst().orElse(null);
+            return UdfParser.getUdfDescInfo(method);
+        }
+        return descInfo;
+    }
+
+    /**
+     * 获取所有udf函数描述信息
+     * @return udf函数描述信息
+     */
+    public Collection<UdfFunctionDescInfo> getAllFunctionDescInfo(){
+        Collection<UdfFunctionDescInfo> result = new ArrayList<>();
+        Map<String, Map<Method, List<Class<?>>>> rowedMap = this.methodTable.rowMap();
+        if(ObjectUtil.isEmpty(rowedMap)){
+            return result;
+        }
+        for (String functionName : rowedMap.keySet()) {
+            UdfFunctionDescInfo functionDescInfo = getFunctionDescInfo(functionName);
+            if(ObjectUtil.isNotEmpty(functionDescInfo)){
+                result.add(functionDescInfo);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取所有注册的表名
+     * @return  所有注册的表名
+     */
+    public Set<String>  getAllTableName(){
+        return this.tableDataMap.keySet();
+    }
+
+    /**
+     * 打印一个 udf 函数描述信息
+     */
+    public String showUdfDesc(String functionName){
+        UdfFunctionDescInfo functionDescInfo = getFunctionDescInfo(functionName);
+        StringBuilder sb = new StringBuilder();
+        if(ObjectUtil.isEmpty(functionDescInfo)){
+            sb.append("not has udf function : ").append(functionName);
+            return sb.toString();
+        }
+        String functionName1 = functionDescInfo.getFunctionName();
+        String functionDesc = functionDescInfo.getFunctionDesc();
+        String returnType = functionDescInfo.getReturnType();
+        List<UdfParamDescInfo> udfParamDescInfoList = functionDescInfo.getUdfParamDescInfoList();
+
+        sb.append(functionName1).append("\n\tdesc: ").append(functionDesc)
+                .append("\n\tReturns: ").append(returnType)
+                .append("\n\targs:\n");
+        for (UdfParamDescInfo paramDescInfo : udfParamDescInfoList) {
+            String paramName = paramDescInfo.getParamName();
+            String paramType = paramDescInfo.getParamType();
+            String paramDesc = paramDescInfo.getParamDesc();
+            sb.append("\t\t").append(paramName)
+                    .append("\n\t\t\t").append(String.format("%-15s", paramType))
+                    .append("\t").append(paramDesc).append("\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 打印所有udf 函数描述信息
+     */
+    public String showUdfDesc(){
+        Collection<UdfFunctionDescInfo> allFunctionDescInfo = getAllFunctionDescInfo();
+        StringBuilder sb = new StringBuilder();
+        if(ObjectUtil.isEmpty(allFunctionDescInfo)){
+            sb.append("not has udf function");
+            return sb.toString();
+        }
+        for (UdfFunctionDescInfo descInfo : allFunctionDescInfo) {
+            String functionName = descInfo.getFunctionName();
+            String functionDesc = descInfo.getFunctionDesc();
+            String returnType = descInfo.getReturnType();
+            List<UdfParamDescInfo> udfParamDescInfoList = descInfo.getUdfParamDescInfoList();
+
+            sb.append(functionName).append("\n\tdesc: ").append(functionDesc)
+                    .append("\n\tReturns: ").append(returnType)
+                    .append("\n\targs:\n");
+            for (UdfParamDescInfo paramDescInfo : udfParamDescInfoList) {
+                String paramName = paramDescInfo.getParamName();
+                String paramType = paramDescInfo.getParamType();
+                String paramDesc = paramDescInfo.getParamDesc();
+                sb.append("\t\t").append(paramName)
+                    .append("\n\t\t\t").append(String.format("%-15s", paramType))
+                    .append("\t").append(paramDesc).append("\n");
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     /**
@@ -1603,7 +1763,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     //endregion ====================== delete end  ============================
 
     //region   ====================== 宏定义 start ============================
-    private Object getMacro(MacroEnum macroEnum) {
+    public Object getMacro(MacroEnum macroEnum) {
         String tableName = tableNameStack.peek();
         if(macroEnum != null){
             switch (macroEnum){
@@ -1617,6 +1777,48 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 case CUR_WRITE_DOCUMENT:
                     Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
                     return writeModel ? this.getTableContextNewDocument(tableName) : this.getTableContextDocument(tableName);
+                case ALL_UDF_DESC_INFO:
+                    return this.getAllFunctionDescInfo();
+                case ALL_TABLE_NAME:
+                    return this.getAllTableName();
+                case CUR_CONTEXT_PROXY:
+                    return this.curContextProxy;
+                case TABLE_NOT_OPERABLE_DATA:
+                    List<Object> macroParamArgs = MacroParamArgsContext.getMacroParamArgs();
+                    if(ObjectUtil.isEmpty(macroParamArgs)){
+                        return null;
+                    }
+                    Map<String,DocumentContext> result = new HashMap<>();
+                    for (Object macroParamArg : macroParamArgs) {
+                        if(ObjectUtil.isEmpty(macroParamArg)){
+                            continue;
+                        }
+                        DocumentContext tableContextCurWriteDocument = this.getTableContextCurWriteDocument(macroParamArg.toString());
+                        if(ObjectUtil.isNotEmpty(tableContextCurWriteDocument)){
+                            try {
+                                String s = tableContextCurWriteDocument.jsonString();
+                                DocumentContext parse = JsonPath.parse(s);
+                                result.put(macroParamArg.toString(),parse);
+                            }catch (Exception e){}
+                        }
+                    }
+                    return result;
+                case TABLE_OPERABLE_DATA:
+                    List<Object> macroParamArgsTemp = MacroParamArgsContext.getMacroParamArgs();
+                    if(ObjectUtil.isEmpty(macroParamArgsTemp)){
+                        return null;
+                    }
+                    Map<String,DocumentContext> resultTemp = new HashMap<>();
+                    for (Object macroParamArg : macroParamArgsTemp) {
+                        if(ObjectUtil.isEmpty(macroParamArg)){
+                            continue;
+                        }
+                        DocumentContext tableContextCurWriteDocument = this.getTableContextCurWriteDocument(macroParamArg.toString());
+                        if(ObjectUtil.isNotEmpty(tableContextCurWriteDocument)){
+                            resultTemp.put(macroParamArg.toString(),tableContextCurWriteDocument);
+                        }
+                    }
+                    return resultTemp;
                 default: return null;
             }
         }

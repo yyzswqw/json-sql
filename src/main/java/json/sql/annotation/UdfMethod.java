@@ -18,4 +18,10 @@ public @interface UdfMethod {
      */
     String functionName();
 
+    /**
+     * 参数描述信息
+     * @return 参数描述信息
+     */
+    String desc() default "";
+
 }

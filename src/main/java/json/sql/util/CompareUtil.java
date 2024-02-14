@@ -4,7 +4,9 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Date;
+import java.util.Map;
 
 public class CompareUtil {
 
@@ -25,18 +27,24 @@ public class CompareUtil {
         }
         switch(operator) {
             case "=":
-                return compareValue(left,right) == 0;
+                Integer flag = compareValue(left, right);
+                return flag != null && flag == 0;
             case "<>":
             case "!=":
-                return compareValue(left,right) != 0;
+                Integer flag1 = compareValue(left, right);
+                return flag1 != null && flag1 != 0;
             case ">":
-                return compareValue(left,right) > 0;
+                Integer flag2 = compareValue(left, right);
+                return flag2 != null && flag2 > 0;
             case ">=":
-                return compareValue(left,right) >= 0;
+                Integer flag3 = compareValue(left, right);
+                return flag3 != null && flag3 >= 0;
             case "<":
-                return compareValue(left,right) < 0;
+                Integer flag4 = compareValue(left, right);
+                return flag4 != null && flag4 < 0;
             case "<=":
-                return compareValue(left,right) <= 0;
+                Integer flag5 = compareValue(left, right);
+                return flag5 != null && flag5 <= 0;
             default:
                 return false;
         }
@@ -46,9 +54,16 @@ public class CompareUtil {
      * 比较两个值的大小，按照时间、数字、boolean、字符串的优先级顺序比较
      * @param left 左值
      * @param right 右值
-     * @return 左值大 返回正树，相等 返回 0 ,左值小 返回负数
+     * @return 左值大 返回正树，相等 返回 0 ,左值小 返回负数,不可比较返回 null
      */
-    public static int compareValue(Object left, Object right) {
+    public static Integer compareValue(Object left, Object right) {
+        // 集合类型不可比较
+        if(left.getClass().isArray() || Map.class.isAssignableFrom(left.getClass()) || Collection.class.isAssignableFrom(left.getClass())){
+            return null;
+        }
+        if(right.getClass().isArray() || Map.class.isAssignableFrom(right.getClass()) || Collection.class.isAssignableFrom(right.getClass())){
+            return null;
+        }
         // 先尝试时间比较
         try {
             // 是时间类型或者是字符串类型，才尝试使用时间比较
@@ -102,11 +117,11 @@ public class CompareUtil {
         }catch (Exception e){}
         // 还不能比较，按照字符串比较
         try {
-            String s1 = left.toString();
-            String s2 = right.toString();
+            String s1 =  Convert.convert(String.class, left);
+            String s2 =  Convert.convert(String.class, right);
             return s1.compareTo(s2);
         }catch (Exception e){}
-        return -1;
+        return null;
     }
 
     /**

@@ -2,9 +2,7 @@ package json.sql.annotation;
 
 import lombok.extern.slf4j.Slf4j;
 import org.reflections.Reflections;
-import org.reflections.scanners.MethodAnnotationsScanner;
-import org.reflections.scanners.SubTypesScanner;
-import org.reflections.scanners.TypeAnnotationsScanner;
+import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
@@ -36,7 +34,7 @@ public class PackageAnnotationScanner {
         // 设置 Reflections 配置
         ConfigurationBuilder configuration = new ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forJavaClassPath())
-                .setScanners(new SubTypesScanner(false),new TypeAnnotationsScanner());
+                .setScanners(Scanners.SubTypes, Scanners.TypesAnnotated);
         // 创建 Reflections 实例
         Reflections reflections = new Reflections(configuration);
         Set<Class<?>> classes = reflections.getTypesAnnotatedWith(annotationClass);
@@ -54,7 +52,7 @@ public class PackageAnnotationScanner {
         // 设置 Reflections 配置
         ConfigurationBuilder configuration = new ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forJavaClassPath())
-                .setScanners(new MethodAnnotationsScanner());
+                .setScanners( Scanners.MethodsAnnotated);
         // 创建 Reflections 实例
         Reflections reflections = new Reflections(configuration);
         Set<Method> methods = reflections.getMethodsAnnotatedWith(annotationClass);
@@ -73,7 +71,7 @@ public class PackageAnnotationScanner {
         // 设置 Reflections 配置
         ConfigurationBuilder configuration = new ConfigurationBuilder()
                 .forPackages(packageName)
-                .setScanners(new MethodAnnotationsScanner());
+                .setScanners(Scanners.MethodsAnnotated);
         // 创建 Reflections 实例
         Reflections reflections = new Reflections(configuration);
         Set<Method> methods = reflections.getMethodsAnnotatedWith(annotationClass);

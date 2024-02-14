@@ -12,4 +12,10 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface UdfClass {
 
+    /**
+     * 参数描述信息
+     * @return 参数描述信息
+     */
+    String desc() default "";
+
 }

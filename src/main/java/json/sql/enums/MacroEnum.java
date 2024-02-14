@@ -30,6 +30,31 @@ public enum MacroEnum {
      * com.jayway.jsonpath.DocumentContext 类型
      */
     ,CUR_WRITE_DOCUMENT
+    /*
+     * 所有的注册的udf函数描述信息
+     * java.util.Collection<UdfFunctionDescInfo> 类型
+     */
+    ,ALL_UDF_DESC_INFO
+    /*
+     * 所有注册的表名
+     * java.util.Set<String> 类型
+     */
+    ,ALL_TABLE_NAME
+    /*
+     * 指定表不可操作的数据，不可操作意味着对该对象的修改不会影响现有的表中的数据
+     * java.util.Map<String,com.jayway.jsonpath.DocumentContext> 类型
+     */
+    ,TABLE_NOT_OPERABLE_DATA
+    /*
+     * 指定表可操作的数据，可操作意味着对该对象的修改会影响现有的表中的数据
+     * java.util.Map<String,com.jayway.jsonpath.DocumentContext> 类型
+     */
+    ,TABLE_OPERABLE_DATA
+    /*
+     * 当前上下文代理
+     * json.sql.CurContextProxy 类型
+     */
+    ,CUR_CONTEXT_PROXY
 
 
 

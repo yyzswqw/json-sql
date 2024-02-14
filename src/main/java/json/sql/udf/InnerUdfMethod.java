@@ -3,15 +3,99 @@ package json.sql.udf;
 import cn.hutool.core.util.ObjectUtil;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import json.sql.CurContextProxy;
 import json.sql.annotation.MacroParam;
 import json.sql.annotation.UdfMethod;
 import json.sql.annotation.UdfMethodIgnore;
+import json.sql.annotation.UdfParam;
+import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
+import json.sql.util.MacroParamArgsContext;
 import net.minidev.json.JSONArray;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class InnerUdfMethod {
+
+    @UdfMethod(functionName = "getTable",desc = "获取指定表的数据")
+    public static Map<String,String> getTable(@MacroParam(type = MacroEnum.CUR_CONTEXT_PROXY) CurContextProxy contextProxy,
+                                                          @UdfParam(desc = "表名列表") List<String> tableNameList) {
+
+        if(ObjectUtil.isEmpty(tableNameList)){
+            return new HashMap<>();
+        }
+        Map<String,String> result = new HashMap<>();
+        try {
+            MacroParamArgsContext.addMacroParamArgs(tableNameList);
+            Map<String,DocumentContext> tables = contextProxy.getMacro(MacroEnum.TABLE_NOT_OPERABLE_DATA);
+            for (Map.Entry<String, DocumentContext> documentContextEntry : tables.entrySet()) {
+                try {
+                    String tableName = documentContextEntry.getKey();
+                    DocumentContext value = documentContextEntry.getValue();
+                    String s = value.jsonString();
+                    result.put(tableName, s);
+                }catch (Exception ignored){}
+            }
+        }finally {
+            // 必须清除，否则影响后面的函数使用
+            MacroParamArgsContext.remove();
+        }
+        return result;
+    }
+
+    @UdfMethod(functionName = "showUdf",desc = "获取满足正则表达式的udf描述信息,没有条件则获取所有udf")
+    public static Collection<UdfFunctionDescInfo> showUdf(@MacroParam(type = MacroEnum.ALL_UDF_DESC_INFO) Collection<UdfFunctionDescInfo> allUdfDescInfoList,
+                                             @UdfParam(desc = "正则表达式列表") List<String> patternList) {
+        Collection<UdfFunctionDescInfo> result = new ArrayList<>();
+        if(ObjectUtil.isEmpty(patternList)){
+            if(ObjectUtil.isNotEmpty(allUdfDescInfoList)){
+                result = new ArrayList<>(allUdfDescInfoList);
+            }
+            return result;
+        }
+        List<Pattern> allPatternList = new ArrayList<>();
+        for (String pattern : patternList) {
+            Pattern itemPattern = Pattern.compile(pattern);
+            allPatternList.add(itemPattern);
+        }
+
+        for (UdfFunctionDescInfo descInfo : allUdfDescInfoList) {
+            B:for (Pattern namePattern : allPatternList) {
+                if (namePattern.matcher(descInfo.getFunctionName()).find()) {
+                    result.add(descInfo);
+                    break B;
+                }
+            }
+        }
+        return result;
+    }
+
+    @UdfMethod(functionName = "showTableNames",desc = "获取满足正则表达式的表名,没有条件则获取所有表名")
+    public static Set<String> showTableNames(@MacroParam(type = MacroEnum.ALL_TABLE_NAME) Set<String> allTableNameSet,
+                                    @UdfParam(desc = "表名正则表达式列表") List<String> namePatternList) {
+        Set<String> result = new HashSet<>();
+        if(ObjectUtil.isEmpty(namePatternList)){
+            if(ObjectUtil.isNotEmpty(namePatternList)){
+                result = new HashSet<>(namePatternList);
+            }
+            return result;
+        }
+        List<Pattern> allPatternList = new ArrayList<>();
+        for (String namePattern : namePatternList) {
+            Pattern nameItemPattern = Pattern.compile(namePattern);
+            allPatternList.add(nameItemPattern);
+        }
+        for (String tableName : allTableNameSet) {
+            B:for (Pattern namePattern : allPatternList) {
+                if (namePattern.matcher(tableName).find()) {
+                    result.add(tableName);
+                    break B;
+                }
+            }
+        }
+        return result;
+    }
 
     /**
      * 如果指定的jsonPath的值为空，则删除指定的jsonPath，jsonPath为空则默认删除全部
@@ -19,8 +103,9 @@ public class InnerUdfMethod {
      * @param jsonPaths jsonPath，为空则默认删除全部
      * @return 成功删除的jsonPath个数
      */
-    @UdfMethod(functionName = "delIfNull")
-    public static Integer delIfNull(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext, String ... jsonPaths) {
+    @UdfMethod(functionName = "delIfNull",desc = "如果指定的jsonPath的值为空，则删除指定的jsonPath，jsonPath为空则默认删除全部")
+    public static Integer delIfNull(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                                    @UdfParam(desc = "jsonPath列表") String ... jsonPaths) {
         if(ObjectUtil.isEmpty(jsonPaths)){
             jsonPaths = new String[]{"$.*"};
         }
@@ -43,8 +128,9 @@ public class InnerUdfMethod {
      * @param jsonPaths jsonPath，为空则默认删除全部
      * @return 成功删除的jsonPath个数
      */
-    @UdfMethod(functionName = "del")
-    public static Integer del(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext, String ... jsonPaths) {
+    @UdfMethod(functionName = "del",desc = "删除指定的jsonPath，jsonPath为空则默认删除全部")
+    public static Integer del(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                              @UdfParam(desc = "jsonPath列表") String ... jsonPaths) {
         if(ObjectUtil.isEmpty(jsonPaths)){
             jsonPaths = new String[]{"$.*"};
         }
@@ -58,15 +144,25 @@ public class InnerUdfMethod {
         return result;
     }
 
-    @UdfMethod(functionName = "formatAllLevel")
+    @UdfMethod(functionName = "formatAllLevel",desc = "格式化json中的字符串json,将字符串的json转换为一个正常的json，直到递归到最大层级，jsonPath为空则默认为根路径")
     public static Object formatAllLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                        String jsonPath, String ... ignoreKeys) {
-        return format(curDocumentContext, jsonPath, Long.MAX_VALUE, ignoreKeys);
+                                        @UdfParam(desc = "jsonPath") String jsonPath, @UdfParam(desc = "需要忽略key的列表") String ... ignoreKeys) {
+        return format(curDocumentContext, jsonPath, Long.MAX_VALUE,true, ignoreKeys);
     }
 
-    @UdfMethod(functionName = "format")
+    @UdfMethod(functionName = "formatAllLevel2",desc = "格式化json中的字符串json,将字符串的json转换为一个正常的json，直到递归到最大层级，jsonPath为空则默认为根路径")
+    public static Object formatAllLevel2(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+             @UdfParam(desc = "jsonPath") String jsonPath,
+             @UdfParam(desc = "是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值") Boolean replace,
+             @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys) {
+        return format(curDocumentContext, jsonPath, Long.MAX_VALUE,replace, ignoreKeys);
+    }
+
+    @UdfMethod(functionName = "format",desc = "格式化json中的字符串json,将字符串的json转换为一个正常的json，jsonPath为空则默认为根路径")
     public static Object format(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                String jsonPath, Long level, String ... ignoreKeys) {
+            @UdfParam(desc = "jsonPath")String jsonPath, @UdfParam(desc = "往下递归的最大层级")Long level,
+            @UdfParam(desc = "是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值") Boolean replace,
+            @UdfParam(desc = "需要忽略key的列表") String ... ignoreKeys) {
         String json = curDocumentContext.jsonString();
         DocumentContext parse = JsonPath.parse(json);
         if(ObjectUtil.isEmpty(jsonPath)){
@@ -81,6 +177,10 @@ public class InnerUdfMethod {
             read = parse.read(jsonPath);
         }catch (Exception e){
             return null;
+        }
+        // 默认要将原始值替换掉
+        if(ObjectUtil.isNotEmpty(replace) && !replace){
+            return read;
         }
         if(read instanceof Map){
             Map<Object,Object> valMap = (Map) read;
@@ -220,16 +320,37 @@ public class InnerUdfMethod {
     }
 
 
+    @UdfMethod(functionName = "size",desc = "返回集合的 size,如果是对象，并且不为空，则返回1")
+    public static Long size(@UdfParam(desc = "待判断数据")Object obj){
+        if(Objects.isNull(obj)){
+            return 0L;
+        }
+        if(obj.getClass().isArray() ){
+            Object[] objArr = (Object[]) obj;
+            return Long.parseLong(String.valueOf(objArr.length));
+        }
+        if(Map.class.isAssignableFrom(obj.getClass())){
+            Map<?,?> objArr = (Map<?,?>) obj;
+            return Long.parseLong(String.valueOf(objArr.size()));
+        }
+        if(Collection.class.isAssignableFrom(obj.getClass())){
+            Collection<?> objArr = (Collection<?>) obj;
+            return Long.parseLong(String.valueOf(objArr.size()));
+        }
+        return 1L;
+    }
+
+
     /**
-     * 返回数 组的 size,如果是对象，返回的是一级 key 的 个数，jsonPath为空则默认为根路径
+     * 返回数组的 size,如果是对象，返回的是一级 key 的 个数，jsonPath为空则默认为根路径
      * @param curDocumentContext 当前写DocumentContext
      * @param jsonPath jsonPath，为空则默认为根路径
      * @param objReturnSize 如果不是数组，是json对象，则是否返回json对象的一级key的个数，默认不返回
      * @return size
      */
-    @UdfMethod(functionName = "size")
-    public static Long size(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                            String jsonPath,Boolean objReturnSize) {
+    @UdfMethod(functionName = "jsonSize",desc = "返回数组的 size,如果是对象，返回的是一级 key 的数量(默认不开启)，jsonPath为空则默认为根路径")
+    public static Long jsonSize(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                            @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "如果是json object对象，是否返回一级 key 的数量，默认false")Boolean objReturnSize) {
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
             jsonPath = "$";
@@ -263,15 +384,16 @@ public class InnerUdfMethod {
         }
     }
 
-    @UdfMethod(functionName = "values")
+    @UdfMethod(functionName = "values",desc = "获取jsonPath下的所有的value，直到递归到最大层级，jsonPath为空则默认为根路径")
     public static Set<Object> values(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                     String jsonPath, String ... ignoreKeys) {
+                                     @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "需要忽略key的列表") String ... ignoreKeys) {
         return innerValues(curDocumentContext,jsonPath,Long.MAX_VALUE,ignoreKeys);
     }
 
-    @UdfMethod(functionName = "valuesByLevel")
+    @UdfMethod(functionName = "valuesByLevel",desc = "获取jsonPath下的所有的value，jsonPath为空则默认为根路径")
     public static Set<Object> valuesByLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                            String jsonPath,Long level, String ... ignoreKeys) {
+                                            @UdfParam(desc = "jsonPath") String jsonPath,@UdfParam(desc = "往下递归的最大层级")Long level,
+                                            @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys) {
         return innerValues(curDocumentContext,jsonPath,level,ignoreKeys);
     }
 
@@ -360,15 +482,15 @@ public class InnerUdfMethod {
         return result;
     }
 
-    @UdfMethod(functionName = "keys")
+    @UdfMethod(functionName = "keys",desc = "获取jsonPath下的所有的key，直到递归到最大层级，jsonPath为空则默认为根路径")
     public static Set<Object> keys(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                   String jsonPath){
+                                   @UdfParam(desc = "jsonPath")String jsonPath){
         return innerKeys(curDocumentContext,jsonPath,Long.MAX_VALUE);
     }
 
-    @UdfMethod(functionName = "keysByLevel")
+    @UdfMethod(functionName = "keysByLevel",desc = "获取jsonPath下的所有的key，jsonPath为空则默认为根路径")
     public static Set<Object> keysByLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                          String jsonPath,Long level){
+                                          @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "往下递归的最大层级")Long level){
         return innerKeys(curDocumentContext,jsonPath,level);
     }
 
@@ -440,42 +562,43 @@ public class InnerUdfMethod {
         return result;
     }
 
-    @UdfMethod(functionName = "explode2")
+    @UdfMethod(functionName = "explode2",desc = "将json 对象打平展开")
     public static Map<Object,Object> explode2(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                              String jsonPath,Long level, String ... ignoreKeys){
+                                              @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "往下递归的最大层级")Long level,
+                                              @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys){
         return innerExplode(curDocumentContext,null,true,jsonPath,true,false,false,level,ignoreKeys);
     }
 
-    @UdfMethod(functionName = "explode3")
+    @UdfMethod(functionName = "explode3",desc = "将json 对象打平展开")
     public static Map<Object,Object> explode3(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                              String jsonPath, String ... ignoreKeys){
+                                              @UdfParam(desc = "jsonPath") String jsonPath, @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys){
         return innerExplode(curDocumentContext,null,true,jsonPath,true,false,false,Long.MAX_VALUE,ignoreKeys);
     }
 
-    @UdfMethod(functionName = "explode")
+    @UdfMethod(functionName = "explode",desc = "将json 对象打平展开")
     public static Map<Object,Object> explode(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                             Boolean putNewValue2TarJsonPath,
-                                             String jsonPath,Boolean delOldJsonPath,
-                                             Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
-                                             Long level,String ... ignoreKeys){
+                                             @UdfParam(desc = "是否将打平展开的值放入根路径下")Boolean putNewValue2TarJsonPath,
+                                             @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "是否删除打平展开前jsonPath的值")Boolean delOldJsonPath,
+                                             @UdfParam(desc = "如果遇到数组是否需要打平展开")Boolean arrayExplode,@UdfParam(desc = "如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换")Boolean arrayExplodeConcatIndex,
+                                             @UdfParam(desc = "往下递归的最大层级")Long level,@UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys){
         return innerExplode(curDocumentContext,null,putNewValue2TarJsonPath,jsonPath,delOldJsonPath,arrayExplode,arrayExplodeConcatIndex,level,ignoreKeys);
     }
 
-    @UdfMethod(functionName = "explodeAllLevel2")
+    @UdfMethod(functionName = "explodeAllLevel2",desc = "将json 对象打平展开")
     public static Map<Object,Object> explodeAllLevel2(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                                     Boolean putNewValue2TarJsonPath,
-                                                     String jsonPath,Boolean delOldJsonPath,
-                                                     Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
-                                                     String ... ignoreKeys){
+                                                      @UdfParam(desc = "是否将打平展开的值放入根路径下")Boolean putNewValue2TarJsonPath,
+                                                      @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "是否删除打平展开前jsonPath的值")Boolean delOldJsonPath,
+                                                      @UdfParam(desc = "如果遇到数组是否需要打平展开")Boolean arrayExplode,@UdfParam(desc = "如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换")Boolean arrayExplodeConcatIndex,
+                                                      @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys){
         return explodeAllLevel(curDocumentContext,null,putNewValue2TarJsonPath,jsonPath,delOldJsonPath,arrayExplode,arrayExplodeConcatIndex,ignoreKeys);
     }
 
-    @UdfMethod(functionName = "explodeAllLevel")
+    @UdfMethod(functionName = "explodeAllLevel",desc = "将json 对象打平展开")
     public static Map<Object,Object> explodeAllLevel(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
-                                                     String tarJsonPath, Boolean putNewValue2TarJsonPath,
-                                                     String jsonPath,Boolean delOldJsonPath,
-                                                     Boolean arrayExplode,Boolean arrayExplodeConcatIndex,
-                                                     String ... ignoreKeys){
+                                                     @UdfParam(desc = "将打平展开的值放入指定路径下")String tarJsonPath, @UdfParam(desc = "是否将打平展开的值放入tarJsonPath路径下")Boolean putNewValue2TarJsonPath,
+                                                     @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "是否删除打平展开前jsonPath的值")Boolean delOldJsonPath,
+                                                     @UdfParam(desc = "如果遇到数组是否需要打平展开")Boolean arrayExplode,@UdfParam(desc = "如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换")Boolean arrayExplodeConcatIndex,
+                                                     @UdfParam(desc = "需要忽略key的列表")String ... ignoreKeys){
         return innerExplode(curDocumentContext,tarJsonPath,putNewValue2TarJsonPath,jsonPath,delOldJsonPath,arrayExplode,arrayExplodeConcatIndex,Long.MAX_VALUE,ignoreKeys);
     }
 
