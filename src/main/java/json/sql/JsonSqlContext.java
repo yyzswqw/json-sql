@@ -2,10 +2,6 @@ package json.sql;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
-import json.sql.annotation.PackageAnnotationScanner;
-import json.sql.annotation.UdfClass;
-import json.sql.annotation.UdfMethod;
-import json.sql.annotation.UdfParser;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
@@ -33,8 +29,8 @@ public class JsonSqlContext {
      * 删除表
      * @param tableName 表名
      */
-    public void dropTable(String tableName) {
-        jsonSqlVisitor.dropTable(tableName);
+    public Integer dropTable(String tableName) {
+        return jsonSqlVisitor.dropTable(tableName);
     }
 
     /**

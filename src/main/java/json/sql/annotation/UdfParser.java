@@ -106,6 +106,13 @@ public class UdfParser {
      * @param method method
      */
     public static void registerUdfMethod(JsonSqlContext jsonSqlContext, Method method) {
+        if(ObjectUtil.isEmpty(method)){
+            return ;
+        }
+        UdfMethodIgnore udfMethodIgnore = method.getAnnotation(UdfMethodIgnore.class);
+        if(ObjectUtil.isNotEmpty(udfMethodIgnore)){
+            return ;
+        }
         // 获取参数列表
         String functionName = method.getName();
         UdfMethod udfMethod = method.getAnnotation(UdfMethod.class);
@@ -176,7 +183,7 @@ public class UdfParser {
                             }else if(Collection.class.isAssignableFrom(parameterType)){
                                 genericityArgsType = new ListTypeReference(clazzList.get(0));
                             }
-                        }catch (Exception e){}
+                        }catch (Exception ignored){}
                     }
                 }
             }
@@ -295,7 +302,7 @@ public class UdfParser {
                 String simpleName = typeArgument.getTypeName();
                 try {
                     simpleName = ((Class<?>) typeArgument).getSimpleName();
-                }catch (Exception e){}
+                }catch (Exception ignored){}
                 simpleNameList.add(simpleName);
             }
         }

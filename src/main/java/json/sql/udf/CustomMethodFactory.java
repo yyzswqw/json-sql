@@ -30,10 +30,14 @@ public class CustomMethodFactory {
                 }
             }
         }
+        Method[] ignoreMethods = null;
+        if(ObjectUtil.isNotEmpty(udfMethods)){
+            ignoreMethods = udfMethods.toArray(new Method[0]);
+        }
         Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(UdfClass.class);
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
-                UdfParser.classParser(jsonSqlContext,aClass, false, (Method[]) null);
+                UdfParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
             }
         }
     }

@@ -45,6 +45,10 @@ elseLable: 'ELSE' | 'else';
 existsLable: 'EXISTS' | 'exists';
 betweenLable: 'BETWEEN' | 'between';
 likeLable: 'LIKE' | 'like';
+ifLable: 'IF' | 'if';
+createLable: 'CREATE' | 'create';
+dropLable: 'DROP' | 'drop';
+tableLable: 'TABLE' | 'table';
 
 selectLable: 'SELECT' | 'select';
 fromLable: 'FROM' | 'from';
@@ -55,9 +59,13 @@ toJsonFunction: 'toJson(' STRING ')';
 toJsonByPathFunction: 'toJsonByPath(' STRING ')';
 jsonPathFunction: 'jsonPath(' STRING ')';
 
+ifFunction: ifLable '(' ifTrueAndResultBranch (',' ifTrueAndResultBranch)* ifFuncElseBranch? ')';
+ifTrueAndResultBranch: expression ',' relationalExpr;
+ifFuncElseBranch: ',' relationalExpr;
 
 // 语法规则
-sql: updateStatement | selectStatement | deleteStatement;
+sql: sqlStatement (';' sqlStatement)* ';'?;
+sqlStatement: updateStatement | selectStatement | deleteStatement | createTableStatement | dropTableStatement;
 deleteStatement : (delete tableName)? delClause (where expression)?;
 delClause : columnName (',' columnName)* ;
 updateSql: updateStatement;
@@ -87,6 +95,7 @@ relationalExpr: relationalExpr op=('*'|'/'|'%') relationalExpr           # MulDi
             | relationalExpr op=('+'|'-') relationalExpr                 # AddSub
             | primaryExpr                                                # id
             | toJsonFunction                                             # toJsonFunc
+            | ifFunction                                                 # ifFunc
             | toJsonByPathFunction                                       # toJsonByPathFunc
             | customFunction                                             # customFunc
             | jsonPathFunction                                           # jsonPathFunc
@@ -109,6 +118,10 @@ likeExpression : (columnName | literalValue) (notLable)? likeLable STRING;
 
 // IS NULL子句
 isNullExpression : columnName isLable (notLable)? nullLable;
+
+createTableStatement: createLable tableLable tableName selectStatement;
+
+dropTableStatement: dropLable tableName;
 
 selectStatement : selectLable selectList fromLable tableName (where expression)?;
 selectList : selectItem (',' selectItem)*;

@@ -366,7 +366,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * 删除表
      * @param tableName 表名
      */
-    public void dropTable(String tableName) {
+    public Integer dropTable(String tableName) {
         if(ObjectUtil.hasEmpty(tableName)){
             throw new RuntimeException("表名不能为空");
         }
@@ -375,7 +375,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             tableContext.setDocument(null);
             tableContext.setNewDocument(null);
             tableContext.setOriginalJson(null);
+            return 1;
         }
+        return 0;
     }
 
     /**
@@ -780,9 +782,28 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     @Override
     public Object visitSql(SqlParser.SqlContext ctx) {
+        List<SqlParser.SqlStatementContext> sqlStatementContexts = ctx.sqlStatement();
+        if(ObjectUtil.isEmpty(sqlStatementContexts)){
+            return null;
+        }
+        Object lastResult = null;
+        for (SqlParser.SqlStatementContext sqlStatementContext : sqlStatementContexts) {
+            if(ObjectUtil.isEmpty(sqlStatementContext)){
+                continue;
+            }
+            lastResult = visitSqlStatement(sqlStatementContext);
+        }
+        return lastResult;
+    }
+
+    @Override
+    public Object visitSqlStatement(SqlParser.SqlStatementContext ctx) {
         SqlParser.UpdateStatementContext updateStatementContext = ctx.updateStatement();
         SqlParser.SelectStatementContext selectStatementContext = ctx.selectStatement();
         SqlParser.DeleteStatementContext deleteStatementContext = ctx.deleteStatement();
+        SqlParser.CreateTableStatementContext createTableStatement = ctx.createTableStatement();
+        SqlParser.DropTableStatementContext dropTableStatementContext = ctx.dropTableStatement();
+
         if(ObjectUtil.isNotEmpty(updateStatementContext)){
             return visitUpdateStatement(updateStatementContext);
         }
@@ -792,8 +813,49 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         if(ObjectUtil.isNotEmpty(deleteStatementContext)){
             return visitDeleteStatement(deleteStatementContext);
         }
+        if(ObjectUtil.isNotEmpty(createTableStatement)){
+            return visitCreateTableStatement(createTableStatement);
+        }
+        if(ObjectUtil.isNotEmpty(dropTableStatementContext)){
+            return visitDropTableStatement(dropTableStatementContext);
+        }
         return null;
     }
+
+    // region ======================== create table start ===================================
+
+    @Override
+    public Object visitCreateTableStatement(SqlParser.CreateTableStatementContext ctx) {
+        SqlParser.TableNameContext tableNameContext = ctx.tableName();
+        SqlParser.SelectStatementContext selectStatementContext = ctx.selectStatement();
+        Object o = visitSelectStatement(selectStatementContext);
+        if(ObjectUtil.isEmpty(o)){
+            return 0;
+        }
+        try {
+            this.registerTable(tableNameContext.getText(),o.toString());
+        }catch (Exception e){
+            return 0;
+        }
+        return 1;
+    }
+
+
+    // endregion ======================== create table end ===================================
+
+    // region ======================== drop table start ===================================
+
+    @Override
+    public Object visitDropTableStatement(SqlParser.DropTableStatementContext ctx) {
+        SqlParser.TableNameContext tableNameContext = ctx.tableName();
+        if(ObjectUtil.isEmpty(tableNameContext) && ObjectUtil.isEmpty(tableNameContext.getText())){
+            return 0;
+        }
+        return this.dropTable(tableNameContext.getText());
+    }
+
+
+    // region ======================== drop table end ===================================
 
     // region ======================== update start ===================================
     @Override
@@ -1159,6 +1221,31 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         SqlParser.ExpressionContext expression = ctx.expression();
         Object v1 = visitExpression(expression);
         return Boolean.parseBoolean(v1==null?"false":v1.toString());
+    }
+
+    @Override
+    public Object visitIfFunction(SqlParser.IfFunctionContext ctx) {
+        List<SqlParser.IfTrueAndResultBranchContext> ifTrueAndResultBranchContexts = ctx.ifTrueAndResultBranch();
+        SqlParser.IfFuncElseBranchContext ifFuncElseBranchContext = ctx.ifFuncElseBranch();
+        if(ObjectUtil.isNotEmpty(ifTrueAndResultBranchContexts)){
+            for (SqlParser.IfTrueAndResultBranchContext ifTrueAndResultBranchContext : ifTrueAndResultBranchContexts) {
+                if(ObjectUtil.isNotEmpty(ifTrueAndResultBranchContext)){
+                    SqlParser.ExpressionContext expression = ifTrueAndResultBranchContext.expression();
+                    SqlParser.RelationalExprContext relationalExprContext = ifTrueAndResultBranchContext.relationalExpr();
+                    Object o = visitExpression(expression);
+                    if(ObjectUtil.isNotEmpty(o) && Boolean.parseBoolean(o.toString())){
+                        return visit(relationalExprContext);
+                    }
+                }
+            }
+        }
+        if(ObjectUtil.isNotEmpty(ifFuncElseBranchContext)){
+            SqlParser.RelationalExprContext relationalExprContext = ifFuncElseBranchContext.relationalExpr();
+            if(ObjectUtil.isNotEmpty(relationalExprContext)){
+                return visit(relationalExprContext);
+            }
+        }
+        return null;
     }
 
     // endregion ======================== expression end ===================================

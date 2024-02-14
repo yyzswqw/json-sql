@@ -8,6 +8,7 @@ import json.sql.annotation.MacroParam;
 import json.sql.annotation.UdfMethod;
 import json.sql.annotation.UdfMethodIgnore;
 import json.sql.annotation.UdfParam;
+import json.sql.constant.Constants;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.util.MacroParamArgsContext;
@@ -17,6 +18,24 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class InnerUdfMethod {
+
+    @UdfMethod(functionName = "rename",desc = "获取指定表的数据")
+    public static Integer rename(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,
+                          @UdfParam(desc = "需要改名的jsonPath路径") String jsonPath
+                          ,@UdfParam(desc = "旧的名称") String oldName,@UdfParam(desc = "新的名称") String newName) {
+        try {
+            if(ObjectUtil.isEmpty(jsonPath)){
+                jsonPath = Constants.ROOT_PATH;
+            }
+            if(ObjectUtil.hasEmpty(oldName,newName)){
+                return 0;
+            }
+            curDocumentContext.renameKey(jsonPath,oldName,newName);
+            return 1;
+        }catch (Exception e){
+            return 0;
+        }
+    }
 
     @UdfMethod(functionName = "getTable",desc = "获取指定表的数据")
     public static Map<String,String> getTable(@MacroParam(type = MacroEnum.CUR_CONTEXT_PROXY) CurContextProxy contextProxy,
@@ -166,7 +185,7 @@ public class InnerUdfMethod {
         String json = curDocumentContext.jsonString();
         DocumentContext parse = JsonPath.parse(json);
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         if(ObjectUtil.isEmpty(level)){
             level = Long.MAX_VALUE;
@@ -209,7 +228,7 @@ public class InnerUdfMethod {
             return curDocumentContext.json();
         }
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         Set<String> ignoreKeySet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreKeys)){
@@ -234,7 +253,7 @@ public class InnerUdfMethod {
                 try {
                     DocumentContext parse = JsonPath.parse(val);
                     // 数组下每个对象的层级应该和父级相同
-                    Object values = innerFormat(parse,"$",level,ignoreKeys);
+                    Object values = innerFormat(parse,Constants.ROOT_PATH,level,ignoreKeys);
                     if(ObjectUtil.isNotEmpty(values)){
                         curDocumentContext.set(jsonPath+String.format("[%d]",i ),values);
                     }else {
@@ -264,9 +283,9 @@ public class InnerUdfMethod {
                         Object values = null;
                         if((parse.json() instanceof JSONArray)){
                             // 数组下每个对象的层级应该和父级相同
-                            values = innerFormat(parse,"$",level,ignoreKeys);
+                            values = innerFormat(parse,Constants.ROOT_PATH,level,ignoreKeys);
                         }else{
-                            values = innerFormat(parse,"$",level - 1,ignoreKeys);
+                            values = innerFormat(parse,Constants.ROOT_PATH,level - 1,ignoreKeys);
                         }
 
                         if(ObjectUtil.isNotEmpty(values)){
@@ -305,7 +324,7 @@ public class InnerUdfMethod {
                         if(level - 1 < 0){
                             return curDocumentContext.json();
                         }else {
-                            Object values = innerFormat(parse,"$",level - 1,ignoreKeys);
+                            Object values = innerFormat(parse,Constants.ROOT_PATH,level - 1,ignoreKeys);
                             if(ObjectUtil.isNotEmpty(values)){
                                 curDocumentContext.put(jsonPath,key.toString(),values);
                             }
@@ -353,7 +372,7 @@ public class InnerUdfMethod {
                             @UdfParam(desc = "jsonPath")String jsonPath,@UdfParam(desc = "如果是json object对象，是否返回一级 key 的数量，默认false")Boolean objReturnSize) {
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         try {
             read = curDocumentContext.read(jsonPath);
@@ -417,7 +436,7 @@ public class InnerUdfMethod {
         }
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         try {
             read = curDocumentContext.read(jsonPath);
@@ -434,7 +453,7 @@ public class InnerUdfMethod {
                 try {
                     DocumentContext parse = JsonPath.parse(val);
                     // 数组下每个对象的层级应该和父级相同
-                    Set<Object> values = innerValues(parse,"$",level,ignoreKeys);
+                    Set<Object> values = innerValues(parse,Constants.ROOT_PATH,level,ignoreKeys);
                     if(ObjectUtil.isNotEmpty(values)){
                         result.addAll(values);
                     }
@@ -467,7 +486,7 @@ public class InnerUdfMethod {
                     if(level - 1 < 0){
                         result.add(value);
                     }else {
-                        Set<Object> values = innerValues(parse,"$",level - 1,ignoreKeys);
+                        Set<Object> values = innerValues(parse,Constants.ROOT_PATH,level - 1,ignoreKeys);
                         if(ObjectUtil.isNotEmpty(values)){
                             result.addAll(values);
                         }else{
@@ -509,7 +528,7 @@ public class InnerUdfMethod {
         }
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         try {
             read = curDocumentContext.read(jsonPath);
@@ -526,7 +545,7 @@ public class InnerUdfMethod {
                 try {
                     DocumentContext parse = JsonPath.parse(val);
                     // 数组下每个对象的层级应该和父级相同
-                    Set<Object> keys = innerKeys(parse,"$",level);
+                    Set<Object> keys = innerKeys(parse,Constants.ROOT_PATH,level);
                     if(ObjectUtil.isNotEmpty(keys)){
                         result.addAll(keys);
                     }
@@ -551,7 +570,7 @@ public class InnerUdfMethod {
                     DocumentContext parse = JsonPath.parse(value);
                     // 能解析说明可以递归
                     if(level - 1 >= 0){
-                        Set<Object> keys = innerKeys(parse,"$",level - 1);
+                        Set<Object> keys = innerKeys(parse,Constants.ROOT_PATH,level - 1);
                         if(ObjectUtil.isNotEmpty(keys)){
                             result.addAll(keys);
                         }
@@ -631,7 +650,7 @@ public class InnerUdfMethod {
         }
         Object read = null;
         if(ObjectUtil.isEmpty(jsonPath)){
-            jsonPath = "$";
+            jsonPath = Constants.ROOT_PATH;
         }
         try {
             read = curDocumentContext.read(jsonPath);
@@ -643,7 +662,7 @@ public class InnerUdfMethod {
         }
         if(read instanceof JSONArray){
             JSONArray readValue = (JSONArray)read;
-            String path = "$";
+            String path = Constants.ROOT_PATH;
             String name = null;
             if(ObjectUtil.isNotEmpty(jsonPath)){
                 int i = jsonPath.lastIndexOf(".");
@@ -675,7 +694,7 @@ public class InnerUdfMethod {
                             }
                         }else{
                             // 数组下每个对象的层级应该和父级相同
-                            Map<Object, Object> valMap = innerExplode(parse, null,false,"$", false,arrayExplode,arrayExplodeConcatIndex,level, ignoreKeys);
+                            Map<Object, Object> valMap = innerExplode(parse, null,false,Constants.ROOT_PATH, false,arrayExplode,arrayExplodeConcatIndex,level, ignoreKeys);
                             if(ObjectUtil.isNotEmpty(valMap)){
                                 for (Map.Entry<Object, Object> objectObjectEntry : valMap.entrySet()) {
                                     Object key = objectObjectEntry.getKey();
@@ -738,7 +757,7 @@ public class InnerUdfMethod {
                     if(level - 1 < 0){
                         resultMap.put(key,value);
                     }else{
-                        Map<Object, Object> valMap = innerExplode(parse, null,false,"$", false,arrayExplode,arrayExplodeConcatIndex,level - 1, ignoreKeys);
+                        Map<Object, Object> valMap = innerExplode(parse, null,false,Constants.ROOT_PATH, false,arrayExplode,arrayExplodeConcatIndex,level - 1, ignoreKeys);
                         if(ObjectUtil.isNotEmpty(valMap)){
                             resultMap.putAll(valMap);
                         }else{
@@ -749,7 +768,7 @@ public class InnerUdfMethod {
                     resultMap.put(key,value);
                 }
             }
-            String path = "$";
+            String path = Constants.ROOT_PATH;
             String name = null;
             if(ObjectUtil.isNotEmpty(tarJsonPath)){
                 int i = tarJsonPath.lastIndexOf(".");

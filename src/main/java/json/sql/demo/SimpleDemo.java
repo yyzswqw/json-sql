@@ -1,17 +1,8 @@
 package json.sql.demo;
 
-import com.jayway.jsonpath.DocumentContext;
 import json.sql.JsonSqlContext;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
-import json.sql.enums.MacroEnum;
-import json.sql.udf.ListTypeReference;
-import json.sql.udf.MapTypeReference;
-
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 
 public class SimpleDemo {
 
@@ -67,7 +58,12 @@ public class SimpleDemo {
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $format('store.temp4',2,'a'),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,$format('$'),ab = $explode(true,'store.bicycle',true,true,false,1),age = jsonPath('age')%4 + age,$delIfNull('age') where $f(1,2,3,4,5,6) > 0 and $f1(1,2,3,4,5,6) > 0 and $f2(1,2,3,4,5,6) > 0 and $size($showTableNames('c')) >= 0";
 //        String sql = "select $showUdf() from a1";
-        String sql = "select $getTable('a1','b1') from a1";
+//        String sql = "select $getTable('a1','b1') from a1";
+//        String sql = "select if(1=1,1,2) from a1";
+//        String sql = "create table c1 select if(1=1,1,2) from a1";
+//        String sql = "drop c1;";
+//        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1";
+        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1;update c1 set $rename('$','_c0','ab'),ab=ab+1;select * from c1;";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
