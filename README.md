@@ -4,7 +4,7 @@
 # 提供的功能
 
 - 表概念，一条JSON即为一张表
-- 支持SQL statment
+- 支持SQL statement
   - select ，查询字段
   - update ，更新字段(增加、删除、修改、重命名）
   - delete，删除字段
@@ -42,7 +42,7 @@
 - and
 - or
 
-# 支持的SQL statment
+# 支持的SQL statement
 
 - select ，查询字段
 - update tableName set，更新字段(增加、删除、修改、重命名）
