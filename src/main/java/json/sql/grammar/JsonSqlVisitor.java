@@ -20,6 +20,7 @@ import json.sql.udf.ListTypeReference;
 import json.sql.udf.MapTypeReference;
 import json.sql.udf.TypeReference;
 import json.sql.util.CompareUtil;
+import json.sql.util.CurContext;
 import json.sql.util.MacroParamArgsContext;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -82,8 +83,6 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      *  udf 函数中的map类型可变参数的默认泛型
      */
     private static final TypeReference defaultMapTypeReference = new MapTypeReference(Object.class,Object.class);
-
-    private CurContextProxy curContextProxy = new CurContextProxy(this);
 
     // region ======================== api start ===================================
 
@@ -717,7 +716,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 this.getTableContextDocument(tableName).delete(jsonPath);
             }
             return 1;
-        }catch (Exception e){
+        }catch (Exception ignored){
         }
         return 0;
     }
@@ -1456,6 +1455,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 }
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
+            }finally {
+                CurContextProxy curContext = CurContext.getCurContext();
+                if(ObjectUtil.isNotEmpty(curContext)){
+                    curContext.setJsonSqlVisitor(null);
+                }
+                CurContext.remove();
             }
         }
 
@@ -1693,7 +1698,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                     }else{
                         inValueList.add(read);
                     }
-                }catch (Exception e){
+                }catch (Exception ignored){
 
                 }
 
@@ -1727,7 +1732,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             try {
                 Object jsonPath = visitColumnName(columnNameContext);
                 result = JsonPath.parse(v).read(jsonPath.toString());
-            }catch (Exception e){
+            }catch (Exception ignored){
             }
         }
         if(ObjectUtil.isNotEmpty(notLableContext)){
@@ -1866,7 +1871,12 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 case ALL_TABLE_NAME:
                     return this.getAllTableName();
                 case CUR_CONTEXT_PROXY:
-                    return this.curContextProxy;
+                    CurContextProxy curContext = CurContext.getCurContext();
+                    if(ObjectUtil.isNotEmpty(curContext)){
+                        return curContext;
+                    }
+                    CurContext.set(new CurContextProxy(this));
+                    return CurContext.getCurContext();
                 case TABLE_NOT_OPERABLE_DATA:
                     List<Object> macroParamArgs = MacroParamArgsContext.getMacroParamArgs();
                     if(ObjectUtil.isEmpty(macroParamArgs)){
@@ -1883,7 +1893,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                                 String s = tableContextCurWriteDocument.jsonString();
                                 DocumentContext parse = JsonPath.parse(s);
                                 result.put(macroParamArg.toString(),parse);
-                            }catch (Exception e){}
+                            }catch (Exception ignored){}
                         }
                     }
                     return result;

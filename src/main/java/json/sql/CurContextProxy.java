@@ -5,9 +5,13 @@ import json.sql.grammar.JsonSqlVisitor;
 
 public class CurContextProxy {
 
-    private final JsonSqlVisitor jsonSqlVisitor;
+    private JsonSqlVisitor jsonSqlVisitor;
 
     public CurContextProxy(JsonSqlVisitor jsonSqlVisitor){
+        this.jsonSqlVisitor = jsonSqlVisitor;
+    }
+
+    public void setJsonSqlVisitor(JsonSqlVisitor jsonSqlVisitor){
         this.jsonSqlVisitor = jsonSqlVisitor;
     }
 

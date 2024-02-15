@@ -136,7 +136,7 @@ public class InnerUdfMethod {
                     curDocumentContext.delete(jsonPath);
                     result += 1;
                 }
-            }catch (Exception e){}
+            }catch (Exception ignored){}
         }
         return result;
     }
@@ -158,7 +158,7 @@ public class InnerUdfMethod {
             try {
                 curDocumentContext.delete(jsonPath);
                 result += 1;
-            }catch (Exception e){}
+            }catch (Exception ignored){}
         }
         return result;
     }
@@ -389,7 +389,7 @@ public class InnerUdfMethod {
             try {
                 Collection valueCollection = curDocumentContext.read(jsonPath, Collection.class);
                 return Long.parseLong(String.valueOf(valueCollection.size()));
-            }catch (Exception e){}
+            }catch (Exception ignored){}
 
             if(ObjectUtil.isNotEmpty(objReturnSize) && objReturnSize){
                 try {
@@ -457,7 +457,7 @@ public class InnerUdfMethod {
                     if(ObjectUtil.isNotEmpty(values)){
                         result.addAll(values);
                     }
-                } catch (Exception e) {}
+                } catch (Exception ignored) {}
             }
         }else {
             Map<Object,Object> valueMap = new LinkedHashMap<>();
@@ -549,7 +549,7 @@ public class InnerUdfMethod {
                     if(ObjectUtil.isNotEmpty(keys)){
                         result.addAll(keys);
                     }
-                } catch (Exception e) {}
+                } catch (Exception ignored) {}
             }
         }else {
             Map<Object,Object> valueMap = new LinkedHashMap<>();
@@ -575,7 +575,7 @@ public class InnerUdfMethod {
                             result.addAll(keys);
                         }
                     }
-                } catch (Exception e) {}
+                } catch (Exception ignored) {}
             }
         }
         return result;
