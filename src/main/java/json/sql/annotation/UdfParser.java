@@ -54,8 +54,8 @@ public class UdfParser {
             try {
                 registerUdfMethod(jsonSqlContext, method);
             }catch (Exception e){
-                log.info("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                 if (log.isDebugEnabled()) {
+                    log.debug("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册udf 函数失败!",e);
                 }
             }
@@ -96,8 +96,8 @@ public class UdfParser {
             try {
                 registerUdfMethod(jsonSqlContext, method);
             }catch (Exception e){
-                log.info("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                 if (log.isDebugEnabled()) {
+                    log.debug("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册udf 函数失败!",e);
                 }
             }
@@ -128,12 +128,16 @@ public class UdfParser {
         Type[] genericParameterTypes = method.getGenericParameterTypes();
 
         if(!checkUdfMethod(method)){
-            log.info("udf 函数不符合规范! functionName : {} ,method : {} ,parameterTypes : {}", functionName, method.getName(),parameterTypes);
+            if (log.isDebugEnabled()) {
+                log.debug("udf 函数不符合规范! functionName : {} ,method : {} ,parameterTypes : {}", functionName, method.getName(),parameterTypes);
+            }
             return;
         }
 
         if(ObjectUtil.isEmpty(parameterTypes)){
             jsonSqlContext.registerFunction(functionName, method);
+            UdfFunctionDescInfo udfDescInfo = getUdfDescInfo(method);
+            jsonSqlContext.registerFunctionDescInfo(functionName, udfDescInfo);
             return;
         }
         List<MacroEnum> macroList = new ArrayList<>();

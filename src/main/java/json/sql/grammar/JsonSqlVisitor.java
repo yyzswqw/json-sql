@@ -180,6 +180,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         sb.append(functionName1).append("\n\tdesc: ").append(functionDesc)
                 .append("\n\tReturns: ").append(returnType)
                 .append("\n\targs:\n");
+        if(ObjectUtil.isEmpty(udfParamDescInfoList)){
+            sb.append("\t\tNone\n");
+        }
         for (UdfParamDescInfo paramDescInfo : udfParamDescInfoList) {
             String paramName = paramDescInfo.getParamName();
             String paramType = paramDescInfo.getParamType();
@@ -210,6 +213,9 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             sb.append(functionName).append("\n\tdesc: ").append(functionDesc)
                     .append("\n\tReturns: ").append(returnType)
                     .append("\n\targs:\n");
+            if(ObjectUtil.isEmpty(udfParamDescInfoList)){
+                sb.append("\t\tNone\n");
+            }
             for (UdfParamDescInfo paramDescInfo : udfParamDescInfoList) {
                 String paramName = paramDescInfo.getParamName();
                 String paramType = paramDescInfo.getParamType();
@@ -1706,13 +1712,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
 
         for (Object v : inValueList) {
-            int i = CompareUtil.compareValue(v1, v);
+            Integer i = CompareUtil.compareValue(v1, v);
             if(ObjectUtil.isNotEmpty(notLableContext)){
-                if(i==0){
+                if(ObjectUtil.isNull(i)){
+                    return true;
+                }else if(i==0){
                     return false;
                 }
             }else{
-                if(i==0){
+                if(ObjectUtil.isNull(i)){
+                    return false;
+                }else if(i==0){
                     return true;
                 }
             }
@@ -1760,15 +1770,20 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         Object v2 = visit(relationalExprContext0);
         Object v3 = visit(relationalExprContext1);
 
-        int flag0 = CompareUtil.compareValue(v1, v2);
-        int flag1 = CompareUtil.compareValue(v1, v3);
+        Integer flag0 = CompareUtil.compareValue(v1, v2);
+        Integer flag1 = CompareUtil.compareValue(v1, v3);
         if(ObjectUtil.isNotEmpty(notLableContext)){
-            if (flag0 < 0 || flag1 > 0) {
+            if(ObjectUtil.hasNull(flag0,flag1)){
+                // null和任何值比较都是false
+                return true;
+            }else if (flag0 < 0 || flag1 > 0) {
                 return true;
             }
             return false;
         }else{
-            if (flag0 >= 0 && flag1 <= 0) {
+            if(ObjectUtil.hasNull(flag0,flag1)){
+                return false;
+            }else if (flag0 >= 0 && flag1 <= 0) {
                 return true;
             }
             return false;

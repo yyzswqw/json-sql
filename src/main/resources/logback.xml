@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 日志存放路径 -->
+    <property name="log.path" value="./log" />
+    <!-- 日志输出格式 -->
+<!--    %X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}用于打印Spring Cloud Sleuth提供的TraceId和SpanId等信息，这配置信息用来追踪Zipkin Server请求链-->
+    <property name="simple.log.pattern" value="[%-5level] %msg%n" />
+    <property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss} %-5level [TraceId:%X{X-B3-TraceId:-},SpanId:%X{X-B3-SpanId:-},Export:%X{X-Span-Export:-}] PID:${PID:-} --- %-20([%20.20thread]) %-55(%.32logger{30}:%L) - %msg%n" />
+    <property name="console.log.pattern" value="%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) %green([TraceId:%X{X-B3-TraceId:-},SpanId:%X{X-B3-SpanId:-},Export:%X{X-Span-Export:-}]) %magenta(PID:${PID:-}) %white(---) %-20(%yellow([%20.20thread])) %-55(%cyan(%.32logger{30}:%L)) %magenta(- %msg%n)" />
+
+    <!-- 控制台输出 -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${console.log.pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+<!--    &lt;!&ndash; 系统日志输出 &ndash;&gt;-->
+    <appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+<!--        <file>${log.path}/sys-info.log</file>-->
+        <!-- 循环政策：基于时间创建日志文件 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+            <fileNamePattern>${log.path}/log.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- 日志最大的历史 60天 -->
+            <maxHistory>15</maxHistory>
+            <!--日志文件最大的大小-->
+            <MaxFileSize>500MB</MaxFileSize>
+            <!--日志文件的上限大小-->
+            <totalSizeCap>1024MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="console" />
+    </root>
+
+    <!--系统操作日志-->
+    <root level="INFO">
+        <appender-ref ref="file_info" level="info,error" />
+<!--        <appender-ref ref="file_error" />-->
+    </root>
+</configuration>
