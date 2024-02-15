@@ -16,7 +16,7 @@ public @interface UdfMethod {
      * 注册的函数名
      * @return 函数名称
      */
-    String functionName();
+    String functionName() default "";
 
     /**
      * 参数描述信息
