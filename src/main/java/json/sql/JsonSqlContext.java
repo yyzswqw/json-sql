@@ -26,6 +26,24 @@ public class JsonSqlContext {
     }
 
     /**
+     * 判断数据是否是json格式
+     * @param data json string
+     * @return true:是，false:否
+     */
+    public boolean isJsonData(String data){
+        return this.jsonSqlVisitor.isJsonData(data);
+    }
+
+    /**
+     * 判断表中当前数据是否是json格式
+     * @param tableName 表名
+     * @return true:是，false:否
+     */
+    public boolean isJson(String tableName){
+        return this.jsonSqlVisitor.isJson(tableName);
+    }
+
+    /**
      * 删除表
      * @param tableName 表名
      */

@@ -87,6 +87,46 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     // region ======================== api start ===================================
 
     /**
+     * 判断数据是否是json格式
+     * @param data json string
+     * @return true:是，false:否
+     */
+    public boolean isJsonData(String data){
+        try {
+            DocumentContext parse = JsonPath.parse(data);
+            return isJson(parse);
+        }catch (Exception e){
+            return false;
+        }
+    }
+
+    /**
+     * 判断表中当前数据是否是json格式
+     * @param tableName 表名
+     * @return true:是，false:否
+     */
+    public boolean isJson(String tableName){
+        try {
+            DocumentContext tableContextCurWriteDocument = this.getTableContextCurWriteDocument(tableName);
+            return isJson(tableContextCurWriteDocument);
+        }catch (Exception e){
+            return false;
+        }
+    }
+
+    private boolean isJson(DocumentContext document){
+        try {
+            if(ObjectUtil.isEmpty(document)){
+                return false;
+            }
+            document.jsonString();
+            return true;
+        }catch (Exception e){
+            return false;
+        }
+    }
+
+    /**
      * 注册自定义UDF函数
      * @param functionName 函数名
      * @param method 实现的具体方法，只能是静态方法
