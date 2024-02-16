@@ -1,13 +1,11 @@
-package json.sql.udf;
+package json.sql.udf.method;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import json.sql.CurContextProxy;
-import json.sql.annotation.MacroParam;
-import json.sql.annotation.UdfMethod;
-import json.sql.annotation.UdfMethodIgnore;
-import json.sql.annotation.UdfParam;
+import json.sql.annotation.*;
 import json.sql.constant.Constants;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
@@ -17,7 +15,137 @@ import net.minidev.json.JSONArray;
 import java.util.*;
 import java.util.regex.Pattern;
 
+@UdfClass(ignoreSourceClass = true)
 public class InnerUdfMethod {
+
+    @UdfMethod(functionName = "toDataType",desc = "将数据转换为指定的java类型")
+    public static Object toDataType(@UdfParam(desc = "待转换数据") Object data,
+               @UdfParam(desc = "待转换的java类型的全限定名（需要在当前class path下存在）") String classFullName){
+        if(ObjectUtil.isNull(data)){
+            return null;
+        }
+        try {
+            return Convert.convert(Class.forName(classFullName), data);
+        }catch (Exception e){
+            return null;
+        }
+    }
+
+    @UdfMethod(functionName = "lowerCase",desc = "转换为小写")
+    public static String lowerCase(@UdfParam(desc = "待转换数据") String data){
+        if(ObjectUtil.isNull(data)){
+            return null;
+        }
+        return data.toLowerCase();
+    }
+
+    @UdfMethod(functionName = "upperCase",desc = "转换为大写")
+    public static String upperCase(@UdfParam(desc = "待转换数据") String data){
+        if(ObjectUtil.isNull(data)){
+            return null;
+        }
+        return data.toUpperCase();
+    }
+
+    @UdfMethod(functionName = "concatSuffix",desc = "拼接一个后缀")
+    public static String concatSuffix(@UdfParam(desc = "待拼接数据") String data,
+                                         @UdfParam(desc = "后缀") String suffix){
+        return concatPreSuffix(data,"",suffix);
+    }
+
+    @UdfMethod(functionName = "concatPreSuffix",desc = "拼接一个前缀和后缀，后缀可会空")
+    public static String concatPreSuffix(@UdfParam(desc = "待拼接数据") String data,
+                                   @UdfParam(desc = "前缀") String prefix,
+                                   @UdfParam(desc = "后缀,可为空") String suffix){
+        if(ObjectUtil.isAllEmpty(data,prefix,suffix)){
+            return null;
+        }
+        if(ObjectUtil.isNull(data)){
+            data = "";
+        }
+        if(ObjectUtil.isNull(prefix)){
+            prefix = "";
+        }
+        if(ObjectUtil.isNull(suffix)){
+            suffix = "";
+        }
+        return prefix.concat(data).concat(suffix);
+    }
+
+    @UdfMethod(functionName = "concat",desc = "按照指定分隔符拼接")
+    public static String concat(@UdfParam(desc = "分隔符") String delimiter,
+                                @VariableArgsGenericityType(argGenericityType1 = String.class) @UdfParam(desc = "待拼接数据列表")
+                                List<String> dataList) {
+        if(ObjectUtil.isNull(dataList)){
+            return null;
+        }
+        return String.join(delimiter,dataList);
+    }
+
+    @UdfMethod(functionName = "subString",desc = "截取字符串一部分")
+    public static String subString(@UdfParam(desc = "待截取数据") String data,
+                               @UdfParam(desc = "截取的开始下标(包含)，从0开始，为空则从0开始，若为负数则从最后往前推") Integer start,
+                               @UdfParam(desc = "截取的结束下标(包含)，为空则截取到最后一个，若为负数则从最后往前推") Integer end) {
+        if(ObjectUtil.isNull(data)){
+            return null;
+        }
+        char[] charArray = data.toCharArray();
+        List<String> da = new ArrayList<>();
+        for (char c : charArray) {
+            da.add(String.valueOf(c));
+        }
+        List<String> list = subList(da, start, end);
+        if(ObjectUtil.isNull(list)){
+            return null;
+        }
+        return String.join("", list);
+    }
+
+    @UdfMethod(functionName = "subList",desc = "将一个集合截取一部分")
+    public static List subList(@UdfParam(desc = "集合数据") List<?> data,
+                                 @UdfParam(desc = "截取的开始下标(包含)，从0开始，为空则从0开始，若为负数则从最后往前推") Integer start,
+                                 @UdfParam(desc = "截取的结束下标(包含)，为空则截取到最后一个，若为负数则从最后往前推") Integer end) {
+        if(ObjectUtil.isNull(data)){
+            return null;
+        }
+        List<Object> subList = new ArrayList<>();
+        if(ObjectUtil.isAllEmpty(start,end)){
+            subList.addAll(data);
+            return subList;
+        }
+        int startIndex = start == null? 0 : start;
+        int endIndex = end == null? data.size() : end;
+
+        int step = 1;
+        if(startIndex < 0){
+            step = -1;
+        }
+        if(startIndex < 0){
+            startIndex = data.size() + startIndex;
+        }
+        if(endIndex < 0){
+            endIndex = data.size() + endIndex;
+        }
+        if(endIndex >= data.size()){
+            endIndex = data.size() - 1;
+        }
+        if(step > 0 ){
+            for(; startIndex <= endIndex && startIndex >= 0; startIndex += step){
+                subList.add(data.get(startIndex));
+            }
+        }else{
+            if(startIndex < endIndex){
+                int temp = endIndex;
+                endIndex = startIndex;
+                startIndex = temp;
+            }
+            for(; startIndex >= endIndex && endIndex >= 0 && startIndex < data.size(); startIndex += step){
+                subList.add(data.get(startIndex));
+            }
+        }
+
+        return subList;
+    }
 
     @UdfMethod(functionName = "rename",desc = "重命名key")
     public static Integer rename(@MacroParam(type = MacroEnum.CUR_WRITE_DOCUMENT) DocumentContext curDocumentContext,

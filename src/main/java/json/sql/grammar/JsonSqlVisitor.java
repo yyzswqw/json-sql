@@ -175,11 +175,13 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         String functionName1 = functionDescInfo.getFunctionName();
         String functionDesc = functionDescInfo.getFunctionDesc();
         String returnType = functionDescInfo.getReturnType();
+        String sourceByClass = functionDescInfo.getSourceByClass();
         List<UdfParamDescInfo> udfParamDescInfoList = functionDescInfo.getUdfParamDescInfoList();
 
         sb.append(functionName1).append("\n\tdesc: ").append(functionDesc)
+                .append("\n\tSource By Class : ").append(ObjectUtil.isEmpty(sourceByClass)? "unknown": sourceByClass)
                 .append("\n\tReturns: ").append(returnType)
-                .append("\n\targs:\n");
+                .append("\n\tArgs:\n");
         if(ObjectUtil.isEmpty(udfParamDescInfoList)){
             sb.append("\t\tNone\n");
         }
@@ -208,11 +210,13 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             String functionName = descInfo.getFunctionName();
             String functionDesc = descInfo.getFunctionDesc();
             String returnType = descInfo.getReturnType();
+            String sourceByClass = descInfo.getSourceByClass();
             List<UdfParamDescInfo> udfParamDescInfoList = descInfo.getUdfParamDescInfoList();
 
             sb.append(functionName).append("\n\tdesc: ").append(functionDesc)
+                    .append("\n\tSource By Class : ").append(ObjectUtil.isEmpty(sourceByClass)? "unknown": sourceByClass)
                     .append("\n\tReturns: ").append(returnType)
-                    .append("\n\targs:\n");
+                    .append("\n\tArgs:\n");
             if(ObjectUtil.isEmpty(udfParamDescInfoList)){
                 sb.append("\t\tNone\n");
             }

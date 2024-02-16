@@ -18,4 +18,10 @@ public @interface UdfClass {
      */
     String desc() default "";
 
+    /**
+     * 是否忽略解析udf 来自哪个class
+     * @return 是否忽略
+     */
+    boolean ignoreSourceClass() default false;
+
 }

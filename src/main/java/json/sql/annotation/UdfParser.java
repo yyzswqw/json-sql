@@ -219,11 +219,21 @@ public class UdfParser {
             return null;
         }
         UdfFunctionDescInfo descInfo = new UdfFunctionDescInfo();
+        Class<?> declaringClass = method.getDeclaringClass();
+        UdfClass udfClass = declaringClass.getAnnotation(UdfClass.class);
+        String className = declaringClass.getName();
+        descInfo.setSourceByClass(className);
         String functionName = method.getName();
         UdfMethod udfMethod = method.getAnnotation(UdfMethod.class);
         if(ObjectUtil.isNotEmpty(udfMethod) && ObjectUtil.isNotEmpty(udfMethod.functionName())){
             functionName = udfMethod.functionName();
         }
+        if(ObjectUtil.isNotEmpty(udfMethod) && udfMethod.ignoreSourceClass()){
+            descInfo.setSourceByClass(null);
+        }else if(ObjectUtil.isNotEmpty(udfClass) && udfClass.ignoreSourceClass()){
+            descInfo.setSourceByClass(null);
+        }
+
         descInfo.setFunctionName(functionName);
         if(ObjectUtil.isNotEmpty(udfMethod) && ObjectUtil.isNotEmpty(udfMethod.desc())){
             descInfo.setFunctionDesc(udfMethod.desc());

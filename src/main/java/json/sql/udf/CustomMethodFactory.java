@@ -1,5 +1,6 @@
 package json.sql.udf;
 
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ObjectUtil;
 import json.sql.JsonSqlContext;
 import json.sql.annotation.PackageAnnotationScanner;
@@ -41,6 +42,7 @@ public class CustomMethodFactory {
             }
         }
         UdfParser.classParser(jsonSqlContext,ObjectUtil.class, false, (Method[])null);
+        UdfParser.classParser(jsonSqlContext, DateUtil.class, false, (Method[])null);
     }
 
 }

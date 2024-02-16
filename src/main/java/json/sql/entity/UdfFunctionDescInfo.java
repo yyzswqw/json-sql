@@ -11,6 +11,8 @@ public class UdfFunctionDescInfo implements Serializable {
 
     private String functionName;
 
+    private String sourceByClass;
+
     private String functionDesc;
 
     private String returnType;

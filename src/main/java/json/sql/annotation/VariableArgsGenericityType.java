@@ -20,12 +20,12 @@ public @interface VariableArgsGenericityType {
      * 获取参数第一个泛型类型，Collection、Map中key的泛型
      * @return class
      */
-    Class<?> argGenericityType1();
+    Class<?> argGenericityType1() default Object.class;
 
     /**
      * 获取参数第二个泛型类型，Map中value的泛型
      * @return class
      */
-    Class<?> argGenericityType2();
+    Class<?> argGenericityType2() default Object.class;
 
 }

@@ -32,44 +32,44 @@
 
 # 支持的逻辑比较符
 
-- =  ，等于
-- <> ，不等于
-- != ，不等于
-- < ，小于
-- <=，小于等于
-- \> ，大于
-- \>= ，大于等于
-- and
-- or
+- `=  ` 等于
+- `<> ` 不等于
+- `!= ` 不等于
+- `< ` 小于
+- `<=` 小于等于
+- `> ` 大于
+- `>= ` 大于等于
+- `and`
+- `or`
 
 # 支持的SQL statement
 
-- select ，查询字段
-- update tableName set，更新字段(增加、删除、修改、重命名）
-- delete，删除字段
-- drop tableName，删除注册的表
-- create table tableName select ，根据select 结果，注册表
+- `select` 查询字段
+- `update tableName set` 更新字段(增加、删除、修改、重命名）
+- `delete` 删除字段
+- `drop tableName` 删除注册的表
+- `create table tableName select`  根据select 结果，注册表
 
 # 支持的SQL函数
 
-- *CASE WHEN*
-- *IN*
-- *NOT IN*
--  *EXISTS*
-- *NOT EXISTS*
--  *BETWEEN*
-- *NOT BETWEEN*
-- *LIKE*(正则表达式)
-- *NOT LIKE*(正则表达式)
-- *IS NULL*
-- *IS NOT NULL*
-- IF (expr1,trueResult1 [, expr2,trueResult2] [, elseResult] )
+- `CASE WHEN`
+- `IN`
+- `NOT IN`
+-  `EXISTS`
+- `NOT EXISTS`
+-  `BETWEEN`
+- `NOT BETWEEN`
+- `LIKE`(正则表达式)
+- `NOT LIKE`(正则表达式)
+- `IS NULL`
+- `IS NOT NULL`
+- `IF (expr1,trueResult1 [, expr2,trueResult2] [, elseResult] )`
 
 # 内置语法函数
 
-- toJson('json')，将一个json字符串，转换为json对象
-- toJsonByPath(‘path')，将一个json path值的json字符串，转换为json对象
-- jsonPath('path')，获取一个json path值
+- `toJson('json')` 将一个json字符串，转换为json对象
+- `toJsonByPath(‘path') ` 将一个json path值的json字符串，转换为json对象
+- `jsonPath('path') `获取一个json path值
 
 # 支持的宏
 
@@ -117,120 +117,219 @@
 # 内置UDF函数
 
 ```shell
+size
+	desc: 返回集合的 size,如果是对象，并且不为空，则返回1
+	Source By Class : unknown
+	Returns: Long
+	Args:
+		obj
+			Object         	待判断数据
+
+concat
+	desc: 按照指定分隔符拼接
+	Source By Class : unknown
+	Returns: String
+	Args:
+		delimiter
+			String         	分隔符
+		dataList
+			List<String>   	待拼接数据列表
+
+dateOfYear
+	desc: 获取日期的年份部分
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
+
+valuesByLevel
+	desc: 获取jsonPath下的所有的value，jsonPath为空则默认为根路径
+	Source By Class : unknown
+	Returns: Set<Object>
+	Args:
+		jsonPath
+			String         	jsonPath
+		level
+			Long           	往下递归的最大层级
+		ignoreKeys
+			String[]       	需要忽略key的列表
+
+concatSuffix
+	desc: 拼接一个后缀
+	Source By Class : unknown
+	Returns: String
+	Args:
+		data
+			String         	待拼接数据
+		suffix
+			String         	后缀
+
 jsonSize
 	desc: 返回数组的 size,如果是对象，返回的是一级 key 的数量(默认不开启)，jsonPath为空则默认为根路径
+	Source By Class : unknown
 	Returns: Long
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
 		objReturnSize
 			Boolean        	如果是json object对象，是否返回一级 key 的数量，默认false
 
+concatPreSuffix
+	desc: 拼接一个前缀和后缀，后缀可会空
+	Source By Class : unknown
+	Returns: String
+	Args:
+		data
+			String         	待拼接数据
+		prefix
+			String         	前缀
+		suffix
+			String         	后缀,可为空
+
+subString
+	desc: 截取字符串一部分
+	Source By Class : unknown
+	Returns: String
+	Args:
+		data
+			String         	待截取数据
+		start
+			Integer        	截取的开始下标(包含)，从0开始，为空则从0开始，若为负数则从最后往前推
+		end
+			Integer        	截取的结束下标(包含)，为空则截取到最后一个，若为负数则从最后往前推
+
+formatAllLevel2
+	desc: 格式化json中的字符串json,将字符串的json转换为一个正常的json，直到递归到最大层级，jsonPath为空则默认为根路径
+	Source By Class : unknown
+	Returns: Object
+	Args:
+		jsonPath
+			String         	jsonPath
+		replace
+			Boolean        	是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值
+		ignoreKeys
+			String[]       	需要忽略key的列表
+
 del
 	desc: 删除指定的jsonPath，jsonPath为空则默认删除全部
+	Source By Class : unknown
 	Returns: Integer
-	args:
+	Args:
 		jsonPaths
 			String[]       	jsonPath列表
 
-formatAllLevel
-	desc: 格式化json中的字符串json,将字符串的json转换为一个正常的json，直到递归到最大层级，jsonPath为空则默认为根路径
+toDataType
+	desc: 将数据转换为指定的java类型
+	Source By Class : unknown
 	Returns: Object
-	args:
-		jsonPath
-			String         	jsonPath
-		ignoreKeys
-			String[]       	需要忽略key的列表
-
-getTable
-	desc: 获取指定表的数据
-	Returns: Map<String,String>
-	args:
-		tableNameList
-			List<String>   	表名列表
-
-explode3
-	desc: 将json 对象打平展开
-	Returns: Map<Object,Object>
-	args:
-		jsonPath
-			String         	jsonPath
-		ignoreKeys
-			String[]       	需要忽略key的列表
+	Args:
+		data
+			Object         	待转换数据
+		classFullName
+			String         	待转换的java类型的全限定名（需要在当前class path下存在）
 
 showTableNames
 	desc: 获取满足正则表达式的表名,没有条件则获取所有表名
+	Source By Class : unknown
 	Returns: Set<String>
-	args:
+	Args:
 		namePatternList
 			List<String>   	表名正则表达式列表
 
-size
-	desc: 返回集合的 size,如果是对象，并且不为空，则返回1
+date2Ms
+	desc: 将日期转换为毫秒值
+	Source By Class : unknown
 	Returns: Long
-	args:
-		obj
-			Object         	待判断数据
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
 
-values
-	desc: 获取jsonPath下的所有的value，直到递归到最大层级，jsonPath为空则默认为根路径
-	Returns: Set<Object>
-	args:
-		jsonPath
-			String         	jsonPath
-		ignoreKeys
-			String[]       	需要忽略key的列表
+dateOfSecond
+	desc: 获取日期的秒数部分
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
+
+subList
+	desc: 将一个集合截取一部分
+	Source By Class : unknown
+	Returns: List
+	Args:
+		data
+			List<Object>   	集合数据
+		start
+			Integer        	截取的开始下标(包含)，从0开始，为空则从0开始，若为负数则从最后往前推
+		end
+			Integer        	截取的结束下标(包含)，为空则截取到最后一个，若为负数则从最后往前推
 
 keysByLevel
 	desc: 获取jsonPath下的所有的key，jsonPath为空则默认为根路径
+	Source By Class : unknown
 	Returns: Set<Object>
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
 		level
 			Long           	往下递归的最大层级
 
+delIfNull
+	desc: 如果指定的jsonPath的值为空，则删除指定的jsonPath，jsonPath为空则默认删除全部
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		jsonPaths
+			String[]       	jsonPath列表
+
+values
+	desc: 获取jsonPath下的所有的value，直到递归到最大层级，jsonPath为空则默认为根路径
+	Source By Class : unknown
+	Returns: Set<Object>
+	Args:
+		jsonPath
+			String         	jsonPath
+		ignoreKeys
+			String[]       	需要忽略key的列表
+
+dateOfHour
+	desc: 获取日期的日部分
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
+		is24HourClock
+			Boolean        	是否24小时制
+
 keys
 	desc: 获取jsonPath下的所有的key，直到递归到最大层级，jsonPath为空则默认为根路径
+	Source By Class : unknown
 	Returns: Set<Object>
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
 
 format
 	desc: 格式化json中的字符串json,将字符串的json转换为一个正常的json，jsonPath为空则默认为根路径
+	Source By Class : unknown
 	Returns: Object
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
 		level
 			Long           	往下递归的最大层级
 		replace
 			Boolean        	是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值
-		ignoreKeys
-			String[]       	需要忽略key的列表
-
-explodeAllLevel2
-	desc: 将json 对象打平展开
-	Returns: Map<Object,Object>
-	args:
-		putNewValue2TarJsonPath
-			Boolean        	是否将打平展开的值放入根路径下
-		jsonPath
-			String         	jsonPath
-		delOldJsonPath
-			Boolean        	是否删除打平展开前jsonPath的值
-		arrayExplode
-			Boolean        	如果遇到数组是否需要打平展开
-		arrayExplodeConcatIndex
-			Boolean        	如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换
 		ignoreKeys
 			String[]       	需要忽略key的列表
 
 explode2
 	desc: 将json 对象打平展开
+	Source By Class : unknown
 	Returns: Map<Object,Object>
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
 		level
@@ -238,65 +337,37 @@ explode2
 		ignoreKeys
 			String[]       	需要忽略key的列表
 
-formatAllLevel2
+formatAllLevel
 	desc: 格式化json中的字符串json,将字符串的json转换为一个正常的json，直到递归到最大层级，jsonPath为空则默认为根路径
+	Source By Class : unknown
 	Returns: Object
-	args:
+	Args:
 		jsonPath
 			String         	jsonPath
-		replace
-			Boolean        	是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值
 		ignoreKeys
 			String[]       	需要忽略key的列表
 
-explode
-	desc: 将json 对象打平展开
-	Returns: Map<Object,Object>
-	args:
-		putNewValue2TarJsonPath
-			Boolean        	是否将打平展开的值放入根路径下
-		jsonPath
-			String         	jsonPath
-		delOldJsonPath
-			Boolean        	是否删除打平展开前jsonPath的值
-		arrayExplode
-			Boolean        	如果遇到数组是否需要打平展开
-		arrayExplodeConcatIndex
-			Boolean        	如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换
-		level
-			Long           	往下递归的最大层级
-		ignoreKeys
-			String[]       	需要忽略key的列表
+upperCase
+	desc: 转换为大写
+	Source By Class : unknown
+	Returns: String
+	Args:
+		data
+			String         	待转换数据
 
-rename
-	desc: 重命名key
+dateOfMonth
+	desc: 获取日期的月份部分
+	Source By Class : unknown
 	Returns: Integer
-	args:
-		jsonPath
-			String         	需要改名的jsonPath路径
-		oldName
-			String         	旧的名称
-		newName
-			String         	新的名称
-
-delIfNull
-	desc: 如果指定的jsonPath的值为空，则删除指定的jsonPath，jsonPath为空则默认删除全部
-	Returns: Integer
-	args:
-		jsonPaths
-			String[]       	jsonPath列表
-
-showUdf
-	desc: 获取满足正则表达式的udf描述信息,没有条件则获取所有udf
-	Returns: Collection<UdfFunctionDescInfo>
-	args:
-		patternList
-			List<String>   	正则表达式列表
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
 
 explodeAllLevel
 	desc: 将json 对象打平展开
+	Source By Class : unknown
 	Returns: Map<Object,Object>
-	args:
+	Args:
 		tarJsonPath
 			String         	将打平展开的值放入指定路径下
 		putNewValue2TarJsonPath
@@ -312,16 +383,113 @@ explodeAllLevel
 		ignoreKeys
 			String[]       	需要忽略key的列表
 
-valuesByLevel
-	desc: 获取jsonPath下的所有的value，jsonPath为空则默认为根路径
-	Returns: Set<Object>
-	args:
+getTable
+	desc: 获取指定表的数据
+	Source By Class : unknown
+	Returns: Map<String,String>
+	Args:
+		tableNameList
+			List<String>   	表名列表
+
+toDate
+	desc: 将数据转换为日期
+	Source By Class : unknown
+	Returns: Date
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
+
+explode3
+	desc: 将json 对象打平展开
+	Source By Class : unknown
+	Returns: Map<Object,Object>
+	Args:
 		jsonPath
 			String         	jsonPath
+		ignoreKeys
+			String[]       	需要忽略key的列表
+
+explode
+	desc: 将json 对象打平展开
+	Source By Class : unknown
+	Returns: Map<Object,Object>
+	Args:
+		putNewValue2TarJsonPath
+			Boolean        	是否将打平展开的值放入根路径下
+		jsonPath
+			String         	jsonPath
+		delOldJsonPath
+			Boolean        	是否删除打平展开前jsonPath的值
+		arrayExplode
+			Boolean        	如果遇到数组是否需要打平展开
+		arrayExplodeConcatIndex
+			Boolean        	如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换
 		level
 			Long           	往下递归的最大层级
 		ignoreKeys
 			String[]       	需要忽略key的列表
+
+dateOfMinute
+	desc: 获取日期的分钟部分
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
+
+explodeAllLevel2
+	desc: 将json 对象打平展开
+	Source By Class : unknown
+	Returns: Map<Object,Object>
+	Args:
+		putNewValue2TarJsonPath
+			Boolean        	是否将打平展开的值放入根路径下
+		jsonPath
+			String         	jsonPath
+		delOldJsonPath
+			Boolean        	是否删除打平展开前jsonPath的值
+		arrayExplode
+			Boolean        	如果遇到数组是否需要打平展开
+		arrayExplodeConcatIndex
+			Boolean        	如果遇到数组需要打平展开，key是否拼接上位置下标，不拼接会导致相同key的value被替换
+		ignoreKeys
+			String[]       	需要忽略key的列表
+
+rename
+	desc: 重命名key
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		jsonPath
+			String         	需要改名的jsonPath路径
+		oldName
+			String         	旧的名称
+		newName
+			String         	新的名称
+
+lowerCase
+	desc: 转换为小写
+	Source By Class : unknown
+	Returns: String
+	Args:
+		data
+			String         	待转换数据
+
+showUdf
+	desc: 获取满足正则表达式的udf描述信息,没有条件则获取所有udf
+	Source By Class : unknown
+	Returns: Collection<UdfFunctionDescInfo>
+	Args:
+		patternList
+			List<String>   	正则表达式列表
+
+dateOfDay
+	desc: 获取日期的日部分
+	Source By Class : unknown
+	Returns: Integer
+	Args:
+		date
+			Object         	可转换为java.util.Date的数据
 ```
 
 
@@ -395,54 +563,57 @@ public class CustomMethod {
     }
 
 }
-
-// 手动注册自定义UDF函数
-    public static void registerDemo(JsonSqlContext jsonSqlContext){
-        try {
-            Method a = UdfDemo.class.getMethod("a", Number.class, Object.class);
-            Method b = UdfDemo.class.getMethod("b", BigDecimal.class, BigDecimal.class);
-            Method c = UdfDemo.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class, List.class);
-            Method d = UdfDemo.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
-
-            // 注册 udf 函数
-            jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
-            jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
-            jsonSqlContext.registerFunction("c", c,BigDecimal.class, BigDecimal.class, List.class);
-            jsonSqlContext.registerFunction("d", d);
-
-            // 注册宏参数变量
-            jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
-            jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT, MacroEnum.CUR_WRITE_DOCUMENT);
-
-            UdfFunctionDescInfo udfFunctionDescInfo = new UdfFunctionDescInfo();
-            udfFunctionDescInfo.setFunctionName("c");
-            udfFunctionDescInfo.setFunctionDesc("c");
-            udfFunctionDescInfo.setReturnType("int");
-
-            UdfParamDescInfo paramDescInfo1 = new UdfParamDescInfo();
-            paramDescInfo1.setParamName("a");
-            paramDescInfo1.setParamDesc("a");
-            paramDescInfo1.setParamType("BigDecimal");
-            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo1);
-
-            UdfParamDescInfo paramDescInfo2 = new UdfParamDescInfo();
-            paramDescInfo2.setParamName("b");
-            paramDescInfo2.setParamDesc("b");
-            paramDescInfo2.setParamType("BigDecimal");
-            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo2);
-
-            UdfParamDescInfo paramDescInfo3 = new UdfParamDescInfo();
-            paramDescInfo3.setParamName("a6");
-            paramDescInfo3.setParamDesc("a6");
-            paramDescInfo3.setParamType("List<String>");
-            udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo3);
-            // 注册函数描述信息
-            jsonSqlContext.registerFunctionDescInfo("c", udfFunctionDescInfo);
-
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-    }
+```
+```java
+public class SimpleDemo {
+  // 手动注册自定义UDF函数
+  public static void registerDemo(JsonSqlContext jsonSqlContext){
+      try {
+          Method a = UdfDemo.class.getMethod("a", Number.class, Object.class);
+          Method b = UdfDemo.class.getMethod("b", BigDecimal.class, BigDecimal.class);
+          Method c = UdfDemo.class.getMethod("c", Object.class,Object.class,Object.class,Object.class,Object.class,BigDecimal.class, BigDecimal.class, List.class);
+          Method d = UdfDemo.class.getMethod("d", Object.class,Object.class,Object.class,Object.class, DocumentContext.class);
+  
+          // 注册 udf 函数
+          jsonSqlContext.registerFunction("a", a,Number.class, Object.class);
+          jsonSqlContext.registerFunction("b", b,BigDecimal.class, BigDecimal.class);
+          jsonSqlContext.registerFunction("c", c,BigDecimal.class, BigDecimal.class, List.class);
+          jsonSqlContext.registerFunction("d", d);
+  
+          // 注册宏参数变量
+          jsonSqlContext.registerMacro("c", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT,MacroEnum.CUR_WRITE_DOCUMENT);
+          jsonSqlContext.registerMacro("d", MacroEnum.ORIGINAL_JSON,MacroEnum.READ_DOCUMENT,MacroEnum.ORIGINAL_WRITE_DOCUMENT,MacroEnum.COPY_WRITE_WRITE_DOCUMENT, MacroEnum.CUR_WRITE_DOCUMENT);
+  
+          UdfFunctionDescInfo udfFunctionDescInfo = new UdfFunctionDescInfo();
+          udfFunctionDescInfo.setFunctionName("c");
+          udfFunctionDescInfo.setFunctionDesc("c");
+          udfFunctionDescInfo.setReturnType("int");
+  
+          UdfParamDescInfo paramDescInfo1 = new UdfParamDescInfo();
+          paramDescInfo1.setParamName("a");
+          paramDescInfo1.setParamDesc("a");
+          paramDescInfo1.setParamType("BigDecimal");
+          udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo1);
+  
+          UdfParamDescInfo paramDescInfo2 = new UdfParamDescInfo();
+          paramDescInfo2.setParamName("b");
+          paramDescInfo2.setParamDesc("b");
+          paramDescInfo2.setParamType("BigDecimal");
+          udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo2);
+  
+          UdfParamDescInfo paramDescInfo3 = new UdfParamDescInfo();
+          paramDescInfo3.setParamName("a6");
+          paramDescInfo3.setParamDesc("a6");
+          paramDescInfo3.setParamType("List<String>");
+          udfFunctionDescInfo.getUdfParamDescInfoList().add(paramDescInfo3);
+          // 注册函数描述信息
+          jsonSqlContext.registerFunctionDescInfo("c", udfFunctionDescInfo);
+  
+      } catch (NoSuchMethodException e) {
+          throw new RuntimeException(e);
+      }
+  }
+}
 ```
 
 ## Select示例
@@ -451,7 +622,7 @@ public class CustomMethod {
 
 查询所有字段
 
-```java
+```shell
 
 
 String sql = "select * from a1";
@@ -468,7 +639,7 @@ System.out.println("最终结果 table b1 :"+JsonSqlContext.getTable("b1"));
 
 结果为：
 
-```json
+```text
 最终结果:{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -480,13 +651,13 @@ System.out.println("最终结果 table b1 :"+JsonSqlContext.getTable("b1"));
 
 查询字段进行四则运算或函数运算
 
-```java
+```shell
 String sql = "select p1,p2,p3,p4 + 1 as aA1,p5,toJson('{\"a\":1}') from b1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{"p1":"aa","p3":"reference","aA1":6,"_c0":{"a":1}}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -499,13 +670,13 @@ String sql = "select p1,p2,p3,p4 + 1 as aA1,p5,toJson('{\"a\":1}') from b1";
 
 查询使用case when语句
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -518,13 +689,13 @@ String sql = "select case when 1>2 then 1 end as c from a1 where $a($c(jsonPath(
 
 like中写正则表达式
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c,1 as b ,jsonPath('$..book[0][\"category\"]') as c from a1 where p3 like '^refer'";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{"b":1,"c":["reference"]}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -537,13 +708,13 @@ String sql = "select case when 1>2 then 1 end as c,1 as b ,jsonPath('$..book[0][
 
 条件中进行四则运算
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 3 between 1+1 and p4*2";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{"b":1}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -556,13 +727,13 @@ String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 3 betwee
 
 使用exists
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where not exists (select 1 from b1 where 1!=1 as _c0)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{"b":1}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -575,13 +746,13 @@ String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where not exis
 
 使用in
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 not in (1,2,3,22.99)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:null
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -594,13 +765,13 @@ String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 no
 
 使用in，关联子查询
 
-```java
+```shell
 String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 in (select 1 as abc from b1 where 1=1 as abc)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:null
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -613,13 +784,13 @@ String sql = "select case when 1>2 then 1 end as c,1 as b from a1 where 22.99 in
 
 进行自定义UDF函数调用
 
-```java
+```shell
 String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"_c0":"reference"}
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -634,13 +805,13 @@ String sql = "select *,jsonPath('$.store.book[0].category') from a1 where $a($c(
 
 条件删除字段
 
-```java
+```shell
 String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where 51 in (select p4 from b1 as p4)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -653,13 +824,13 @@ String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where 51 i
 
 条件删除字段
 
-```java
+```shell
 String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 != 5";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -674,13 +845,13 @@ String sql = "delete a1 p1,p2,p3,jsonPath('$..book[0][\"category\"]') where p4 !
 
 删除字段，使用del()函数
 
-```java
+```shell
 String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"age":31.32}
@@ -693,13 +864,13 @@ String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $
 
 使用and和子查询in
 
-```java
+```shell
 String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (select jsonPath('$.store.book[*].price') as abc from b1 where 1=1 as abc)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"age":31.32}
@@ -712,13 +883,13 @@ String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $
 
 使用and和非子查询in
 
-```java
+```shell
 String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $a($c(jsonPath('$.p4'),$d()),'b') >= 1.1 and 22.99  in (1,2,3,22.99)";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"age":31.32}
@@ -731,7 +902,7 @@ String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $
 
 使用case when
 
-```java
+```shell
         String sql = "update a1 SET name = 'a',age = 1,a1 = " +
                 "case when age = 1 then 'a' " +
                 "when age < 10 then true " +
@@ -743,7 +914,7 @@ String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":"a","age":1,"a1":["reference","fiction","fiction"]}
@@ -756,13 +927,13 @@ String sql = "update a1 SET $del('$.store.book[0].category'),age = 31.32 where $
 
 使用逻辑比较
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31.32,name=null where 1.1 >= 1.1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":null,"age":31.32}
@@ -775,13 +946,13 @@ String sql = "update a1 SET name = 'a',age = 31.32,name=null where 1.1 >= 1.1";
 
 使用 is null，设置null
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31.32,name=null where aa IS NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":null,"age":31.32}
@@ -794,13 +965,13 @@ String sql = "update a1 SET name = 'a',age = 31.32,name=null where aa IS NULL";
 
 使用is null，设置boolean
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31,name=false where aa IS NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":false,"age":31}
@@ -813,13 +984,13 @@ String sql = "update a1 SET name = 'a',age = 31,name=false where aa IS NULL";
 
 使用is null，设置动态值
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.price<10)]') where aa IS NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":"a","age":31,"ab":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99}]}
@@ -832,13 +1003,13 @@ String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.price<1
 
 使用is null，设置动态对象值
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..*') where aa IS NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":"a","age":31,"ab":["reference",5,"aa",{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],{"color":"red","price":19.95},{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99},"reference","Nigel Rees","Sayings of the Century",8.95,"fiction","Evelyn Waugh","Sword of Honour",12.99,"fiction","Herman Melville","Moby Dick","0-553-21311-3",8.99,"fiction","J. R. R. Tolkien","The Lord of the Rings","0-395-19395-8",22.99,"red",19.95]}
@@ -851,13 +1022,13 @@ String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..*') where aa IS 
 
 使用is null，和复杂json path
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.isbn)]') where aa IS NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":"a","age":31,"ab":[{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}]}
@@ -870,13 +1041,13 @@ String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.isbn)]'
 
 使用is not null，设置字面量值
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31 where aa IS NOT NULL";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -889,13 +1060,13 @@ String sql = "update a1 SET name = 'a',age = 31 where aa IS NOT NULL";
 
 使用boolean条件，设置字面量值
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31 where true";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":"a","age":31}
@@ -908,13 +1079,13 @@ String sql = "update a1 SET name = 'a',age = 31 where true";
 
 使用逻辑比较符，设置字面量值
 
-```java
+```shell
 String sql = "update a1 SET name = 'a',age = 31 where name = 'a1'";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -927,13 +1098,13 @@ String sql = "update a1 SET name = 'a',age = 31 where name = 'a1'";
 
 使用逻辑比较符，设置动态值
 
-```java
+```shell
 String sql = "update a1 SET age = jsonPath('$.age')%4 + age,name = 1";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"age":null,"name":1}
@@ -946,13 +1117,13 @@ String sql = "update a1 SET age = jsonPath('$.age')%4 + age,name = 1";
 
 设置动态值
 
-```java
+```shell
 String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['category']\"),age = jsonPath(\"age\")%4 + age";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":["reference","fiction","fiction"],"age":null}
@@ -965,13 +1136,13 @@ String sql = "update a1 SET jsonPath(\"name\") = jsonPath(\"$..book[:3]['categor
 
 使用逻辑比较符，设置动态值
 
-```java
+```shell
 String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -984,13 +1155,13 @@ String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category
 
 使用逻辑比较符，设置动态运算后的值
 
-```java
+```shell
 String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:0
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}}}
@@ -1003,13 +1174,13 @@ String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category
 
 设置动态运算后的值
 
-```java
+```shell
 String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),age = jsonPath('age')%4 + age";
 ```
 
 结果为：
 
-```json
+```text
 最终结果:1
 
 最终结果 table a1 :{"p3":"reference","p4":5,"p1":"aa","store":{"book":[{"category":"reference","author":"Nigel Rees","title":"Sayings of the Century","price":8.95},{"category":"fiction","author":"Evelyn Waugh","title":"Sword of Honour","price":12.99},{"category":"fiction","author":"Herman Melville","title":"Moby Dick","isbn":"0-553-21311-3","price":8.99},{"category":"fiction","author":"J. R. R. Tolkien","title":"The Lord of the Rings","isbn":"0-395-19395-8","price":22.99}],"bicycle":{"color":"red","price":19.95}},"name":["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"],"age":null}
