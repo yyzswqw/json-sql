@@ -43,6 +43,25 @@ public class JsonSqlContext {
         return this.jsonSqlVisitor.isJson(tableName);
     }
 
+
+    /**
+     * 检查sql语法是否正确
+     * @param sql sql
+     * @return true:是，false:否
+     */
+    public boolean isSql(String sql){
+        return this.jsonSqlVisitor.isSql(sql);
+    }
+
+    /**
+     * 获取sql语法错误信息
+     * @param sql sql
+     * @return 如果有语法错误，返回错误信息，没有则为空
+     */
+    public List<String> getSqlError(String sql){
+        return this.jsonSqlVisitor.getSqlError(sql);
+    }
+
     /**
      * 删除表
      * @param tableName 表名

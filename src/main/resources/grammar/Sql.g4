@@ -66,7 +66,7 @@ ifFuncElseBranch: ',' relationalExpr;
 // 语法规则
 sql: sqlStatement (';' sqlStatement)* ';'?;
 sqlStatement: updateStatement | selectStatement | deleteStatement | createTableStatement | dropTableStatement;
-deleteStatement : (delete tableName)? delClause (where expression)?;
+deleteStatement : delete (tableName)? delClause (where expression)?;
 delClause : columnName (',' columnName)* ;
 updateSql: updateStatement;
 updateStatement : (update tableName)? set setClause (where expression)?;

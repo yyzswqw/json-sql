@@ -87,6 +87,33 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     // region ======================== api start ===================================
 
     /**
+     * 检查sql语法是否正确
+     * @param sql sql
+     * @return true:是，false:否
+     */
+    public boolean isSql(String sql){
+        List<String> sqlError = getSqlError(sql);
+        if (!sqlError.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 获取sql语法错误信息
+     * @param sql sql
+     * @return 如果有语法错误，返回错误信息，没有则为空
+     */
+    public List<String> getSqlError(String sql){
+        json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
+        json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
+        ParserErrorListener parserErrorListener = new ParserErrorListener();
+        parser.addErrorListener(parserErrorListener);
+        parser.sql();
+        return parserErrorListener.errors();
+    }
+
+    /**
      * 判断数据是否是json格式
      * @param data json string
      * @return true:是，false:否
