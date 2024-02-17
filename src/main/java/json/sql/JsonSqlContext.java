@@ -4,14 +4,18 @@ import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
-import json.sql.grammar.JsonSqlVisitor;
-import json.sql.grammar.ParserErrorListener;
+import json.sql.grammar.*;
 import json.sql.lister.LifecycleListener;
 import json.sql.udf.CustomMethodFactory;
 import json.sql.udf.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.atn.ATNConfigSet;
+import org.antlr.v4.runtime.dfa.DFA;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -289,19 +293,37 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
+
         // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
         List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
-        int consoleErrorListenerIndex = -1;
+        int consoleErrorListenerIndex;
         do {
             consoleErrorListenerIndex = -1;
             for (int i = 0; i < errorListeners.size(); i++) {
                 ANTLRErrorListener next = errorListeners.get(i);
                 if(next instanceof ConsoleErrorListener){
                     consoleErrorListenerIndex = i;
+                    break;
                 }
             }
             if(consoleErrorListenerIndex != -1){
                 errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
             }
         }while (consoleErrorListenerIndex != -1);
 
@@ -354,21 +376,39 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
         // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
         List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
-        int consoleErrorListenerIndex = -1;
+        int consoleErrorListenerIndex;
         do {
             consoleErrorListenerIndex = -1;
             for (int i = 0; i < errorListeners.size(); i++) {
                 ANTLRErrorListener next = errorListeners.get(i);
                 if(next instanceof ConsoleErrorListener){
                     consoleErrorListenerIndex = i;
+                    break;
                 }
             }
             if(consoleErrorListenerIndex != -1){
                 errorListeners.remove(consoleErrorListenerIndex);
             }
         }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();
@@ -389,21 +429,39 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
         // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
         List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
-        int consoleErrorListenerIndex = -1;
+        int consoleErrorListenerIndex;
         do {
             consoleErrorListenerIndex = -1;
             for (int i = 0; i < errorListeners.size(); i++) {
                 ANTLRErrorListener next = errorListeners.get(i);
                 if(next instanceof ConsoleErrorListener){
                     consoleErrorListenerIndex = i;
+                    break;
                 }
             }
             if(consoleErrorListenerIndex != -1){
                 errorListeners.remove(consoleErrorListenerIndex);
             }
         }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();

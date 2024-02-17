@@ -130,6 +130,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
         // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
         List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
         int consoleErrorListenerIndex = -1;
@@ -145,6 +146,22 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 errorListeners.remove(consoleErrorListenerIndex);
             }
         }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
         parser.sql();
         return parserErrorListener.errors();
     }
@@ -629,9 +646,10 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
         // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
         List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
-        int consoleErrorListenerIndex = -1;
+        int consoleErrorListenerIndex;
         do {
             consoleErrorListenerIndex = -1;
             for (int i = 0; i < errorListeners.size(); i++) {
@@ -644,6 +662,22 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 errorListeners.remove(consoleErrorListenerIndex);
             }
         }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();
