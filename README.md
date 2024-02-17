@@ -566,6 +566,12 @@ public class CustomMethod {
 ```
 ```java
 public class SimpleDemo {
+
+  public static void main(String[] args) {
+      JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
+      registerDemo(jsonSqlContext);
+  }
+    
   // 手动注册自定义UDF函数
   public static void registerDemo(JsonSqlContext jsonSqlContext){
       try {

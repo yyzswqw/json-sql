@@ -58,7 +58,7 @@ public class SimpleDemo {
             "}";
 
     public static void main(String[] args) {
-        JsonSqlContext jsonSqlContext = new JsonSqlContext();
+        JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
         registerCustomMethod(jsonSqlContext);
         jsonSqlContext.showUdfDesc();
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode(true,'store.bicycle',true,true,false,1,'abc','abcd1'),age = jsonPath('age')%4 + age";

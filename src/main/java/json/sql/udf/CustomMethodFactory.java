@@ -7,9 +7,11 @@ import json.sql.annotation.PackageAnnotationScanner;
 import json.sql.annotation.UdfClass;
 import json.sql.annotation.UdfMethod;
 import json.sql.annotation.UdfParser;
+import json.sql.lister.LifecycleListener;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Set;
 
 
@@ -43,6 +45,8 @@ public class CustomMethodFactory {
         }
         UdfParser.classParser(jsonSqlContext,ObjectUtil.class, false, (Method[])null);
         UdfParser.classParser(jsonSqlContext, DateUtil.class, false, (Method[])null);
+        List<LifecycleListener> lifecycleListener = jsonSqlContext.getLifecycleListener();
+        lifecycleListener.forEach(listener -> listener.innerRegisterUdfFinish(jsonSqlContext));
     }
 
 }

@@ -25,8 +25,10 @@ import json.sql.util.MacroParamArgsContext;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
+import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ConsoleErrorListener;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -86,6 +88,25 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     // region ======================== api start ===================================
 
+
+    /**
+     * 移除一个UDF函数
+     * @param udfName udf名称
+     */
+    public void removeUdf(String udfName){
+        if(ObjectUtil.isEmpty(udfName)){
+            return;
+        }
+        if(methodTable.containsRow(udfName)){
+            methodTable.row(udfName).clear();
+        }
+        udfFunctionDescInfoMap.remove(udfName);
+        macroMap.remove(udfName);
+        if(variableArgsTypeTable.containsRow(udfName)){
+            variableArgsTypeTable.row(udfName).clear();
+        }
+    }
+
     /**
      * 检查sql语法是否正确
      * @param sql sql
@@ -109,6 +130,21 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex = -1;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
         parser.sql();
         return parserErrorListener.errors();
     }
@@ -593,6 +629,21 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex = -1;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();

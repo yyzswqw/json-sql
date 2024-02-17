@@ -207,6 +207,7 @@ public class UdfParser {
         jsonSqlContext.registerFunction(functionName, method,macroEnums,argsTypes,variableArgsType,genericityArgsType);
         UdfFunctionDescInfo udfDescInfo = getUdfDescInfo(method);
         jsonSqlContext.registerFunctionDescInfo(functionName, udfDescInfo);
+        jsonSqlContext.getLifecycleListener().forEach(listener -> listener.registerOneUdfFinish(method,udfDescInfo));
     }
 
     /**

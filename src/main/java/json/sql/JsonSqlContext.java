@@ -6,6 +6,7 @@ import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
 import json.sql.grammar.ParserErrorListener;
+import json.sql.lister.LifecycleListener;
 import json.sql.udf.CustomMethodFactory;
 import json.sql.udf.TypeReference;
 import lombok.extern.slf4j.Slf4j;
@@ -20,9 +21,37 @@ public class JsonSqlContext {
 
     private final JsonSqlVisitor jsonSqlVisitor;
 
-    public JsonSqlContext(){
+    private final List<LifecycleListener> lifecycleListeners = new ArrayList<>();
+
+    private JsonSqlContext(){
         this.jsonSqlVisitor = new JsonSqlVisitor();
-        CustomMethodFactory.registerCustomMethod(this);
+    }
+
+    public static Builder builder(){
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private final List<LifecycleListener> lifecycleListeners = new ArrayList<>();
+
+        public void addLifecycleListener(LifecycleListener listener){
+            lifecycleListeners.add(listener);
+        }
+
+        public JsonSqlContext build(){
+            JsonSqlContext jsonSqlContext = new JsonSqlContext();
+            if(ObjectUtil.isNotEmpty(lifecycleListeners)){
+                jsonSqlContext.getLifecycleListener().addAll(lifecycleListeners);
+            }
+            CustomMethodFactory.registerCustomMethod(jsonSqlContext);
+            return jsonSqlContext;
+        }
+
+    }
+
+    public List<LifecycleListener> getLifecycleListener(){
+        return this.lifecycleListeners;
     }
 
     /**
@@ -106,6 +135,14 @@ public class JsonSqlContext {
      */
     public void registerFunctionDescInfo(String functionName, UdfFunctionDescInfo functionDescInfo){
         jsonSqlVisitor.registerFunctionDescInfo(functionName,functionDescInfo);
+    }
+
+    /**
+     * 移除一个UDF函数
+     * @param udfName udf名称
+     */
+    public void removeUdf(String udfName){
+        jsonSqlVisitor.removeUdf(udfName);
     }
 
     /**
@@ -252,6 +289,22 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex = -1;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();
@@ -301,6 +354,21 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex = -1;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();
@@ -321,6 +389,21 @@ public class JsonSqlContext {
         json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
         ParserErrorListener parserErrorListener = new ParserErrorListener();
         parser.addErrorListener(parserErrorListener);
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex = -1;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
         ParseTree tree = parser.sql();
         if (parserErrorListener.hasError()) {
             List<String> errors = parserErrorListener.errors();
