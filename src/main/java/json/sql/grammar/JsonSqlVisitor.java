@@ -88,6 +88,17 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     // region ======================== api start ===================================
 
+    /**
+     * 判断是否存在表
+     * @param tableName 表名
+     * @return true:存在，false:不存在
+     */
+    public boolean hasTable(String tableName){
+        if(ObjectUtil.isEmpty(tableName)){
+            return false;
+        }
+        return this.tableDataMap.containsKey(tableName);
+    }
 
     /**
      * 移除一个UDF函数

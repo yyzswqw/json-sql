@@ -87,6 +87,15 @@ public class JsonSqlContext {
     }
 
     /**
+     * 判断是否存在表
+     * @param tableName 表名
+     * @return true:存在，false:不存在
+     */
+    public boolean hasTable(String tableName){
+        return this.jsonSqlVisitor.hasTable(tableName);
+    }
+
+    /**
      * 获取sql语法错误信息
      * @param sql sql
      * @return 如果有语法错误，返回错误信息，没有则为空
