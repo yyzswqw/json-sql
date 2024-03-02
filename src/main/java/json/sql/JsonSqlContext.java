@@ -2,6 +2,7 @@ package json.sql;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
+import json.sql.annotation.CompareSymbolParser;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.*;
@@ -35,6 +36,44 @@ public class JsonSqlContext {
         return new Builder();
     }
 
+    /**
+     * 注册自定义低优先级运算符函数，同加减优先级
+     * @param symbol 运算符
+     * @param method 方法
+     */
+    public void registerLowOperatorSymbolFunction(String symbol, Method method){
+        this.jsonSqlVisitor.registerLowOperatorSymbolFunction(symbol,method);
+    }
+
+    /**
+     * 注册自定义低优先级运算符函数，同加减优先级
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerLowOperatorSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
+        this.jsonSqlVisitor.registerLowOperatorSymbolFunction(symbol,method,argsTypes);
+    }
+
+    /**
+     * 注册自定义高优先级运算符函数，同乘除优先级
+     * @param symbol 运算符
+     * @param method 方法
+     */
+    public void registerHighOperatorSymbolFunction(String symbol, Method method){
+        this.jsonSqlVisitor.registerHighOperatorSymbolFunction(symbol,method);
+    }
+
+    /**
+     * 注册自定义高优先级运算符函数，同乘除优先级
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerHighOperatorSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
+        this.jsonSqlVisitor.registerHighOperatorSymbolFunction(symbol,method,argsTypes);
+    }
+
     public void registerCompareSymbolFunction(String symbol, Method method) {
         this.jsonSqlVisitor.registerCompareSymbolFunction(symbol,method);
     }
@@ -63,6 +102,7 @@ public class JsonSqlContext {
             }
             CustomMethodFactory.registerCustomMethod(jsonSqlContext);
             CustomMethodFactory.registerCompareSymbolMethod(jsonSqlContext);
+            CustomMethodFactory.registerCalculateOperatorSymbolMethod(jsonSqlContext);
             return jsonSqlContext;
         }
 

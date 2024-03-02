@@ -3,12 +3,12 @@ package json.sql.annotation;
 import java.lang.annotation.*;
 
 /**
- * 自定义比较运算符函数
+ * 自定义高优先级运算符函数，同乘除优先级
  */
 @Documented
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CompareSymbolMethod {
+public @interface HighOperatorSymbolMethod {
 
     /**
      * 注册的运算符号

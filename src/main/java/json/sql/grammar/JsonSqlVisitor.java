@@ -27,10 +27,7 @@ import json.sql.util.MethodUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.ANTLRErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ConsoleErrorListener;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -72,6 +69,16 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * 所有自定义的比较符运算 函数，泛型 <比较符,方法，参数列表>
      */
     private Table<String,Method,List<cn.hutool.core.lang.TypeReference<?>>> customCompareMethodTable = HashBasedTable.create();
+
+    /**
+     * 所有自定义的高优先级运算符 函数，同乘除优先级，泛型 <比较符,方法，参数列表>
+     */
+    private Table<String,Method,List<cn.hutool.core.lang.TypeReference<?>>> customHighOperatorMethodTable = HashBasedTable.create();
+
+    /**
+     * 所有自定义的低优先级运算符 函数，同加减优先级，泛型 <比较符,方法，参数列表>
+     */
+    private Table<String,Method,List<cn.hutool.core.lang.TypeReference<?>>> customLowOperatorMethodTable = HashBasedTable.create();
 
 
     /**
@@ -487,6 +494,68 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     /**
+     * 注册自定义低优先级运算符函数，同加减优先级
+     * @param symbol 运算符
+     * @param method 方法
+     */
+    public void registerLowOperatorSymbolFunction(String symbol, Method method){
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        if(ObjectUtil.isEmpty(methodArgsType)){
+            this.registerLowOperatorSymbolFunction(symbol, method,null);
+            return;
+        }
+        this.registerLowOperatorSymbolFunction(symbol, method,methodArgsType);
+    }
+
+    /**
+     * 注册自定义低优先级运算符函数，同加减优先级
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerLowOperatorSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
+        if (this.customLowOperatorMethodTable.containsRow(symbol)) {
+            throw new RuntimeException("已存在 计算运算符 : "+symbol);
+        }
+        if(ObjectUtil.isNull(argsTypes)){
+            this.customLowOperatorMethodTable.put(symbol,method,new ArrayList<>());
+        }else{
+            this.customLowOperatorMethodTable.put(symbol,method,Arrays.asList(argsTypes));
+        }
+    }
+
+    /**
+     * 注册自定义高优先级运算符函数，同乘除优先级
+     * @param symbol 运算符
+     * @param method 方法
+     */
+    public void registerHighOperatorSymbolFunction(String symbol, Method method){
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        if(ObjectUtil.isEmpty(methodArgsType)){
+            this.registerHighOperatorSymbolFunction(symbol, method,null);
+            return;
+        }
+        this.registerHighOperatorSymbolFunction(symbol, method,methodArgsType);
+    }
+
+    /**
+     * 注册自定义高优先级运算符函数，同乘除优先级
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerHighOperatorSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
+        if (this.customHighOperatorMethodTable.containsRow(symbol)) {
+            throw new RuntimeException("已存在 计算运算符 : "+symbol);
+        }
+        if(ObjectUtil.isNull(argsTypes)){
+            this.customHighOperatorMethodTable.put(symbol,method,new ArrayList<>());
+        }else{
+            this.customHighOperatorMethodTable.put(symbol,method,Arrays.asList(argsTypes));
+        }
+    }
+
+    /**
      * 注册自定义运算符函数
      * @param symbol 运算符
      * @param method 方法
@@ -507,8 +576,8 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * @param argsTypes 参数类型列表
      */
     public void registerCompareSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
-        if (customCompareMethodTable.containsRow(symbol)) {
-            throw new RuntimeException("已存在 运算符 : "+symbol);
+        if (this.customCompareMethodTable.containsRow(symbol)) {
+            throw new RuntimeException("已存在 比较运算符 : "+symbol);
         }
         if(ObjectUtil.isNull(argsTypes)){
             this.customCompareMethodTable.put(symbol,method,new ArrayList<>());
@@ -1216,24 +1285,56 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     @Override
     public Object visitMulDiv(SqlParser.MulDivContext ctx) {
-        ParseTree child0 = ctx.getChild(0);
-        ParseTree child1 = ctx.getChild(1);
-        ParseTree child2 = ctx.getChild(2);
-        Object v1 = visit(child0);
-        Object v2 = visit(child2);
+        Object v1 = null;
+        Object v2 = null;
+        List<SqlParser.RelationalExprContext> relationalExprContexts = ctx.relationalExpr();
+        if(ObjectUtil.isNotEmpty(relationalExprContexts) && relationalExprContexts.size() >= 1){
+            SqlParser.RelationalExprContext relationalExprContext = relationalExprContexts.get(0);
+            v1 = visit(relationalExprContext);
+        }
+        if(ObjectUtil.isNotEmpty(relationalExprContexts) && relationalExprContexts.size() >= 2){
+            SqlParser.RelationalExprContext relationalExprContext = relationalExprContexts.get(1);
+            v2 = visit(relationalExprContext);
+        }
+        Token opToken = ctx.op;
+        SqlParser.HighOperatorFunctionContext highOperatorFunctionContext = ctx.highOperatorFunction();
+        if(ObjectUtil.isNotEmpty(highOperatorFunctionContext)){
+            String operator = highOperatorFunctionContext.STRING().getText();
+            operator = operator.substring(1,operator.length()-1);
+            Map<Method, List<cn.hutool.core.lang.TypeReference<?>>> row = customHighOperatorMethodTable.row(operator);
+            if(ObjectUtil.isEmpty(row)){
+                throw new RuntimeException("not has high operator : "+operator);
+            }
+            Method method = row.keySet().stream().findFirst().get();
+            List<cn.hutool.core.lang.TypeReference<?>> typeReferences = row.get(method);
+            Object v1Temp = null;
+            Object v2Temp = null;
+            if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >= 1){
+                v1Temp = Convert.convert(typeReferences.get(0),v1);
+            }
+            if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >= 2){
+                v2Temp = Convert.convert(typeReferences.get(1),v2);
+            }
+            try {
+                return MethodUtil.invokeMethod(method, new Object[]{v1Temp,v2Temp});
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
         if(v1 == null || v2 == null){
             return null;
         }
         BigDecimal sum = new BigDecimal(v1.toString());
         BigDecimal temp = new BigDecimal(v2.toString());
-        if(child1.getText().equals("*")){
+        if(opToken.getText().equals("*")){
             sum = sum.multiply(temp);
-        }else if(child1.getText().equals("/")){
+        }else if(opToken.getText().equals("/")){
             if(temp.equals(BigDecimal.ZERO)){
                 return null;
             }
             sum = sum.divide(temp, 13,RoundingMode.HALF_UP);
-        }else if(child1.getText().equals("%")){
+        }else if(opToken.getText().equals("%")){
             if(temp.equals(BigDecimal.ZERO)){
                 return null;
             }
@@ -1244,16 +1345,49 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     @Override
     public Object visitAddSub(SqlParser.AddSubContext ctx) {
-        ParseTree child0 = ctx.getChild(0);
-        ParseTree child1 = ctx.getChild(1);
-        ParseTree child2 = ctx.getChild(2);
-        Object v1 = visit(child0);
-        Object v2 = visit(child2);
+        Object v1 = null;
+        Object v2 = null;
+        List<SqlParser.RelationalExprContext> relationalExprContexts = ctx.relationalExpr();
+        if(ObjectUtil.isNotEmpty(relationalExprContexts) && relationalExprContexts.size() >= 1){
+            SqlParser.RelationalExprContext relationalExprContext = relationalExprContexts.get(0);
+            v1 = visit(relationalExprContext);
+        }
+        if(ObjectUtil.isNotEmpty(relationalExprContexts) && relationalExprContexts.size() >= 2){
+            SqlParser.RelationalExprContext relationalExprContext = relationalExprContexts.get(1);
+            v2 = visit(relationalExprContext);
+        }
+        Token opToken = ctx.op;
+        SqlParser.LowOperatorFunctionContext lowOperatorFunctionContext = ctx.lowOperatorFunction();
+        if(ObjectUtil.isNotEmpty(lowOperatorFunctionContext)){
+            String operator = lowOperatorFunctionContext.STRING().getText();
+            operator = operator.substring(1,operator.length()-1);
+            Map<Method, List<cn.hutool.core.lang.TypeReference<?>>> row = customLowOperatorMethodTable.row(operator);
+            if(ObjectUtil.isEmpty(row)){
+                throw new RuntimeException("not has low operator : "+operator);
+            }
+            Method method = row.keySet().stream().findFirst().get();
+            List<cn.hutool.core.lang.TypeReference<?>> typeReferences = row.get(method);
+            Object v1Temp = null;
+            Object v2Temp = null;
+            if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >= 1){
+                v1Temp = Convert.convert(typeReferences.get(0),v1);
+            }
+            if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >= 2){
+                v2Temp = Convert.convert(typeReferences.get(1),v2);
+            }
+            try {
+                return MethodUtil.invokeMethod(method, new Object[]{v1Temp, v2Temp});
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+
         if(v1 == null || v2 == null){
             return null;
         }
         BigDecimal sum = new BigDecimal(v1.toString());
-        if(child1.getText().equals("-")){
+        if(opToken.getText().equals("-")){
             v2 = new BigDecimal("0").subtract(new BigDecimal(v2.toString()));
         }
         BigDecimal temp = new BigDecimal(v2.toString());
@@ -1521,8 +1655,14 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 DocumentContext parse = JsonPath.parse(string.getText().substring(1,string.getText().length() - 1));
                 return parse.json();
             }catch (Exception e){
-                e.printStackTrace();
-                return null;
+                // 尝试按照path解析
+                try {
+                    Object read = read(string.getText().substring(1, string.getText().length() - 1));
+                    DocumentContext parse = JsonPath.parse(read);
+                    return parse.json();
+                }catch (Exception e1){
+                    return null;
+                }
             }
         }
         return null;

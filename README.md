@@ -15,6 +15,8 @@
 - JSON字段的删除
 - JSON字段的修改
 - 支持加减乘除取余四则运算
+- 自定义高优先级计算运算符，与乘除同优先级
+- 自定义低优先级计算运算符，与加减同优先级
 - 支持逻辑比较符
 - 支持注册自定义逻辑比较符函数
 - 支持SQL函数
@@ -69,9 +71,12 @@
 
 # 内置语法函数
 
-- `toJson('json')` 将一个json字符串，转换为json对象
-- `toJsonByPath(‘path') ` 将一个json path值的json字符串，转换为json对象
-- `jsonPath('path') `获取一个json path值
+- `toJson('json')`  将一个json字符串，转换为json对象
+- `toJsonByPath(‘path') `  将一个json path值的json字符串，转换为json对象
+- `jsonPath('path') ` 获取一个json path值
+- `compareSymbol(‘符号字符串’)` 自定义的比较运算符
+- `highOpSymbol('符号字符串')` 自定义高优先级计算运算符，与乘除同优先级
+- `lowOpSymbol('符号字符串')` 自定义低优先级计算运算符，与加减同优先级
 
 # 支持的宏
 
@@ -109,6 +114,24 @@
 5、未使用注解注册的函数，可手动显示注册，可参考下方示例中`注册自定义UDF函数`模块
 
 6、注册时，如果已存在同名比较符函数，该函数会注册失败，与内置比较符不冲突
+
+7、使用`@CompareSymbolMethodIgnore`注解定义的方法会被忽略注册
+
+# 注册自定义计算运算符
+
+1、函数只能是公用的静态（public static）方法
+
+2、函数只能有两个参数
+
+3、使用`@HighOperatorSymbolMethod`、`@LowOperatorSymbolMethod`注解的方法或者`@CalculateOperatorSymbolClass`注解的类会被自动注册，无须手动注册
+
+4、`@HighOperatorSymbolMethod`注解定义高优先级计算运算符、`@LowOperatorSymbolMethod`注解定义低优先级计算运算符
+
+5、未使用注解注册的函数，可手动显示注册，可参考下方示例中`注册自定义UDF函数`模块
+
+6、注册时，如果已存在同名同优先级计算运算符函数，该函数会注册失败，与内置比较符不冲突
+
+7、使用`@OperatorSymbolMethodIgnore`注解定义的方法会被忽略注册
 
 # 注册UDF函数
 
@@ -240,10 +263,10 @@ toDataType
 	Source By Class : unknown
 	Returns: Object
 	Args:
-		data
-			Object         	待转换数据
 		classFullName
 			String         	待转换的java类型的全限定名（需要在当前class path下存在）
+		data
+			Object[]       	待转换数据
 
 showTableNames
 	desc: 获取满足正则表达式的表名,没有条件则获取所有表名
@@ -340,6 +363,22 @@ format
 			Boolean        	是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值
 		ignoreKeys
 			String[]       	需要忽略key的列表
+			
+toDataMap
+	desc: 将数据转换为java map类型
+	Source By Class : unknown
+	Returns: Object
+	Args:
+		data
+			Map<Object,Object>	待转换数据
+			
+toDataMapWithStrKey
+	desc: 将数据转换为java map类型,并将key转为string
+	Source By Class : unknown
+	Returns: Object
+	Args:
+		data
+			Map<String,Object>	待转换数据
 
 explode2
 	desc: 将json 对象打平展开
@@ -597,13 +636,34 @@ public class CustomCompareSymbolDemo {
 
 
 ```java
+// 自定义计算符函数
+public class CustomCalculateOperatorSymbolDemo {
+
+    @HighOperatorSymbolMethod(symbol = "sizeAdd")
+    @LowOperatorSymbolMethod(symbol = "sizeAdd")
+    public static int a(List<String> a, List<String> b){
+        return a.size() + b.size();
+    }
+}
+```
+
+
+
+```java
 public class SimpleDemo {
 
   public static void main(String[] args) {
       JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
       registerDemo(jsonSqlContext);
+      // 显式注册比较运算符
       try {
             CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+      // 显式注册计算运算符
+        try {
+            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }

@@ -16,7 +16,7 @@ public class CompareSymbolParser {
     }
 
     /**
-     * 注册 class 运算符 函数
+     * 注册 class 比较运算符 函数
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
@@ -49,8 +49,8 @@ public class CompareSymbolParser {
                 registerCompareSymbolMethod(jsonSqlContext, method);
             }catch (Exception e){
                 if (log.isDebugEnabled()) {
-                    log.debug("注册udf 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
-                    log.debug("注册udf 函数失败!",e);
+                    log.debug("注册比较运算符 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
+                    log.debug("注册比较运算符 函数失败!",e);
                 }
             }
 
@@ -58,7 +58,7 @@ public class CompareSymbolParser {
     }
 
     /**
-     * 注册 class 运算符 函数
+     * 注册 class 比较运算符 函数
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
@@ -91,8 +91,8 @@ public class CompareSymbolParser {
                 registerCompareSymbolMethod(jsonSqlContext, method);
             }catch (Exception e){
                 if (log.isDebugEnabled()) {
-                    log.debug("注册udf 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
-                    log.debug("注册udf 函数失败!",e);
+                    log.debug("注册比较运算符 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
+                    log.debug("注册比较运算符 函数失败!",e);
                 }
             }
         }
@@ -121,7 +121,7 @@ public class CompareSymbolParser {
 
         if(!checkCompareMethod(method)){
             if (log.isDebugEnabled()) {
-                log.debug("运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
+                log.debug("比较运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
             }
             return;
         }
@@ -131,6 +131,7 @@ public class CompareSymbolParser {
     /**
      * 注册一个自定义比较符函数
      * @param jsonSqlContext jsonSqlContext
+     * @param symbol 比较符标识
      * @param method method
      */
     public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext, String symbol,Method method) {
@@ -149,7 +150,7 @@ public class CompareSymbolParser {
 
         if(!checkCompareMethod(method)){
             if (log.isDebugEnabled()) {
-                log.debug("运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
+                log.debug("比较运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
             }
             return;
         }
@@ -185,7 +186,7 @@ public class CompareSymbolParser {
     }
 
     /**
-     * 校验一个方法是否可以被注册为UDF
+     * 校验一个方法是否可以被注册
      * @param method method
      * @return true:是，false:否
      */

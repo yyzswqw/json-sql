@@ -3,10 +3,12 @@ package json.sql.demo;
 import com.jayway.jsonpath.DocumentContext;
 import json.sql.JsonSqlContext;
 import json.sql.annotation.CompareSymbolParser;
+import json.sql.annotation.OperatorSymbolParser;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.entity.UdfParamDescInfo;
+import json.sql.enums.CalculateOperatorSymbolLevel;
 import json.sql.enums.MacroEnum;
 
 import java.lang.reflect.Method;
@@ -73,7 +75,11 @@ public class SimpleDemo {
 //        String sql = "drop c1;";
 //        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1";
 //        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1;update c1 set $rename('$','_c0','ab'),ab=ab+1;select * from c1;";
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 where 1 compareSymbol('>q') 3";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 where 1 compareSymbol('>q') 3";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = (5 lowOpSymbol('sizeAdd') 1 > 0 )";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = 5 lowOpSymbol('sizeAdd') 1";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = $toDataMap('java.util.List',5,2,1,'3','aa',true) lowOpSymbol('sizeAdd') 1";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = $toDataMapWithStrKey(5,2,1,'3','aa',true) lowOpSymbol('sizeAdd') 1";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -124,12 +130,18 @@ public class SimpleDemo {
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
         UdfParser.classParser(jsonSqlContext,UdfDemo.class, false,(String[])null);
+        // 显式注册比较运算符
         try {
             CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
-
+        // 显式注册计算运算符
+        try {
+            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // 手动注册自定义UDF函数

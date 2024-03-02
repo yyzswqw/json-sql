@@ -55,7 +55,12 @@ fromLable: 'FROM' | 'from';
 asLable: 'AS' | 'as';
 starLable: '*';
 
+//自定义比较符
 customCompareFunction: 'compareSymbol(' STRING ')';
+//自定义高优先级运算符，与乘除同优先级
+highOperatorFunction: 'highOpSymbol(' STRING ')';
+//自定义低优先级运算符，与加减同优先级
+lowOperatorFunction: 'lowOpSymbol(' STRING ')';
 toJsonFunction: 'toJson(' STRING ')';
 toJsonByPathFunction: 'toJsonByPath(' STRING ')';
 jsonPathFunction: 'jsonPath(' STRING ')';
@@ -92,15 +97,15 @@ andExpr : equalityExpr (andLable equalityExpr)* | '(' expression ')' ;
 equalityExpr : (relationalExpr comparisonOperator relationalExpr) | boolLable | isNullExpression | inSubqueryExpression | existsSubqueryExpression | betweenExpression | likeExpression | '(' expression ')';
 comparisonOperator : '=' | '<>' | '!=' | '<' | '<=' | '>' | '>=' | customCompareFunction;
 
-relationalExpr: relationalExpr op=('*'|'/'|'%') relationalExpr           # MulDiv
-            | relationalExpr op=('+'|'-') relationalExpr                 # AddSub
-            | primaryExpr                                                # id
-            | toJsonFunction                                             # toJsonFunc
-            | ifFunction                                                 # ifFunc
-            | toJsonByPathFunction                                       # toJsonByPathFunc
-            | customFunction                                             # customFunc
-            | jsonPathFunction                                           # jsonPathFunc
-            | '(' relationalExpr ')'                                     # parens
+relationalExpr: relationalExpr (op=('*'|'/'|'%') | highOperatorFunction) relationalExpr           # MulDiv
+            | relationalExpr (op=('+'|'-') | lowOperatorFunction ) relationalExpr                 # AddSub
+            | primaryExpr                                                                         # id
+            | toJsonFunction                                                                      # toJsonFunc
+            | ifFunction                                                                          # ifFunc
+            | toJsonByPathFunction                                                                # toJsonByPathFunc
+            | customFunction                                                                      # customFunc
+            | jsonPathFunction                                                                    # jsonPathFunc
+            | '(' relationalExpr ')'                                                              # parens
             ;
 
 primaryExpr : '(' expression ')' | literalValue | columnName;

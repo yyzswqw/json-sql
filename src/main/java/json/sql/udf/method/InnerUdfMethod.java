@@ -18,9 +18,19 @@ import java.util.regex.Pattern;
 @UdfClass(ignoreSourceClass = true)
 public class InnerUdfMethod {
 
+    @UdfMethod(functionName = "toDataMapWithStrKey",desc = "将数据转换为java map类型,并将key转为string")
+    public static Object toDataMapWithStrKey(@UdfParam(desc = "待转换数据") Map<String,Object> data){
+        return data;
+    }
+
+    @UdfMethod(functionName = "toDataMap",desc = "将数据转换为java map类型")
+    public static Object toDataMap(@UdfParam(desc = "待转换数据") Map<Object,Object> data){
+        return data;
+    }
+
     @UdfMethod(functionName = "toDataType",desc = "将数据转换为指定的java类型")
-    public static Object toDataType(@UdfParam(desc = "待转换数据") Object data,
-               @UdfParam(desc = "待转换的java类型的全限定名（需要在当前class path下存在）") String classFullName){
+    public static Object toDataType(@UdfParam(desc = "待转换的java类型的全限定名（需要在当前class path下存在）") String classFullName,
+                                    @UdfParam(desc = "待转换数据") Object[] data){
         if(ObjectUtil.isNull(data)){
             return null;
         }
