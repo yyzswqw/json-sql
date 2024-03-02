@@ -6,7 +6,7 @@ import java.lang.annotation.*;
  * 自定义运算符函数
  */
 @Documented
-@Target(ElementType.METHOD)
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CompareSymbolClass {
 
