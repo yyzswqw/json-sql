@@ -1,27 +1,19 @@
 package json.sql.annotation;
 
-
-
 import java.lang.annotation.*;
 
 /**
- * udf函数定义
+ * 自定义运算符函数
  */
 @Documented
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface UdfClass {
+public @interface CompareSymbolClass {
 
     /**
      * 描述信息
      * @return 描述信息
      */
     String desc() default "";
-
-    /**
-     * 是否忽略解析udf 来自哪个class
-     * @return 是否忽略
-     */
-    boolean ignoreSourceClass() default false;
 
 }

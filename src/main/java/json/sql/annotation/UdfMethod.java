@@ -19,8 +19,8 @@ public @interface UdfMethod {
     String functionName() default "";
 
     /**
-     * 参数描述信息
-     * @return 参数描述信息
+     * 描述信息
+     * @return 描述信息
      */
     String desc() default "";
 

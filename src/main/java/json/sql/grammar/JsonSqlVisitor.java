@@ -8,6 +8,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.jayway.jsonpath.*;
 import json.sql.CurContextProxy;
+import json.sql.annotation.CompareSymbolParser;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.TableContext;
@@ -22,6 +23,7 @@ import json.sql.udf.TypeReference;
 import json.sql.util.CompareUtil;
 import json.sql.util.CurContext;
 import json.sql.util.MacroParamArgsContext;
+import json.sql.util.MethodUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +35,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.Serializable;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,26 +47,33 @@ import java.util.regex.Pattern;
 public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
     /**
-     * 所有udf 函数
+     * 所有udf 函数，泛型 <udf名,方法，参数列表（不包含宏参数）>
      */
     private Table<String,Method,List<Class<?>>> methodTable = HashBasedTable.create();
     /**
-     * udf 函数中的可变参数(list、map)的泛型（一个udf函数有且仅有一个可变参数）
+     * udf 函数中的可变参数(list、map)的泛型（一个udf函数有且仅有一个可变参数），泛型 <udf名,参数类型，参数泛型>
      */
     private Table<String,Class<?>,TypeReference> variableArgsTypeTable = HashBasedTable.create();
     /**
-     * udf 函数宏信息
+     * udf 函数宏信息，泛型 <udf名，宏参数列表>
      */
     private Map<String,List<MacroEnum>> macroMap = Maps.newHashMap();
 
     /**
-     * udf函数描述信息
+     * udf函数描述信息，泛型 <udf名，描述信息>
      */
     private Map<String, UdfFunctionDescInfo> udfFunctionDescInfoMap = Maps.newHashMap();
     /**
-     * 所有表数据
+     * 所有表数据，泛型 <表名，表数据>
      */
     private Map<String, TableContext> tableDataMap = Maps.newHashMap();
+
+    /**
+     * 所有自定义的比较符运算 函数，泛型 <比较符,方法，参数列表>
+     */
+    private Table<String,Method,List<cn.hutool.core.lang.TypeReference<?>>> customCompareMethodTable = HashBasedTable.create();
+
+
     /**
      * 当前操作的表的栈
      */
@@ -477,6 +484,37 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         result.put(functionName,values.stream().findFirst().orElse(new ArrayList<>()));
         return result;
+    }
+
+    /**
+     * 注册自定义运算符函数
+     * @param symbol 运算符
+     * @param method 方法
+     */
+    public void registerCompareSymbolFunction(String symbol, Method method){
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        if(ObjectUtil.isEmpty(methodArgsType)){
+            this.registerCompareSymbolFunction(symbol, method,null);
+            return;
+        }
+        this.registerCompareSymbolFunction(symbol, method,methodArgsType);
+    }
+
+    /**
+     * 注册自定义运算符函数
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerCompareSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference<?>[] argsTypes) {
+        if (customCompareMethodTable.containsRow(symbol)) {
+            throw new RuntimeException("已存在 运算符 : "+symbol);
+        }
+        if(ObjectUtil.isNull(argsTypes)){
+            this.customCompareMethodTable.put(symbol,method,new ArrayList<>());
+        }else{
+            this.customCompareMethodTable.put(symbol,method,Arrays.asList(argsTypes));
+        }
     }
 
     /**
@@ -1269,8 +1307,36 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             }
             SqlParser.RelationalExprContext right = relationalExprContexts.get(1);
             Object v2 = visit(right);
-            String operator = comparisonOperatorContext.getText();
-            return CompareUtil.compareValues(v1,operator,v2);
+            SqlParser.CustomCompareFunctionContext customCompareFunctionContext = comparisonOperatorContext.customCompareFunction();
+            if(ObjectUtil.isNotEmpty(customCompareFunctionContext)){
+                String operator = customCompareFunctionContext.STRING().getText();
+                operator = operator.substring(1,operator.length()-1);
+                Map<Method, List<cn.hutool.core.lang.TypeReference<?>>> row = this.customCompareMethodTable.row(operator);
+                if(ObjectUtil.isEmpty(row)){
+                    throw new RuntimeException("not has compare symbol : "+operator);
+                }
+                Method method = row.keySet().stream().findFirst().get();
+                List<cn.hutool.core.lang.TypeReference<?>> typeReferences = row.get(method);
+                Object v1Temp = null;
+                Object v2Temp = null;
+                if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >=1 && ObjectUtil.isNotEmpty(typeReferences.get(0))){
+                    v1Temp = Convert.convert(typeReferences.get(0), v1);
+                }
+                if(ObjectUtil.isNotEmpty(typeReferences) && typeReferences.size() >=2 && ObjectUtil.isNotEmpty(typeReferences.get(1))){
+                    v2Temp = Convert.convert(typeReferences.get(1), v2);
+                }
+                Object o = MethodUtil.invokeMethod(method, new Object[]{v1Temp, v2Temp});
+                if(ObjectUtil.isEmpty(o)){
+                    return false;
+                }
+                if(o instanceof Boolean){
+                    return o;
+                }
+                return Boolean.parseBoolean(o.toString());
+            }else{
+                String operator = comparisonOperatorContext.getText();
+                return CompareUtil.compareValues(v1,operator,v2);
+            }
         }
         SqlParser.ExpressionContext expression = ctx.expression();
         if (expression != null) {
@@ -1482,161 +1548,11 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         Map.Entry<Method, List<Class<?>>> methodListEntry = row.entrySet().stream().findFirst().get();
         Method method = methodListEntry.getKey();
         List<Class<?>> argsTypeClasses = methodListEntry.getValue();
-        List<Object> innerArgsList = new ArrayList<>();
         Object result = null;
         if(method != null){
-            List<MacroEnum> macroEnums = this.macroMap.get(methodName);
-            if(ObjectUtil.isNotEmpty(macroEnums)){
-                for (MacroEnum macroEnum : macroEnums) {
-                    innerArgsList.add(getMacro(macroEnum));
-                }
-            }
-            try {
-                if(argsTypeClasses.isEmpty()){
-                    if(ObjectUtil.isNotEmpty(innerArgsList)){
-                        result = method.invoke(null,innerArgsList.toArray());
-                    }else {
-                        result = method.invoke(null);
-                    }
-                }else{
-                    int curArgsIndex = 0;
-                    for (int i = 0; i < argsTypeClasses.size(); i++) {
-                        Class<?> aClass = argsTypeClasses.get(i);
-                        Object innerArg = null;
-                        if(curArgsIndex < innerArgs.size()){
-                            innerArg = innerArgs.get(curArgsIndex);
-                        }
-
-//                        解析可变函数
-                        if(aClass.isArray() || Map.class.isAssignableFrom(aClass) || Collection.class.isAssignableFrom(aClass)){
-                            int otherArgsNum = argsTypeClasses.size() - (i + 1);
-                            int variableArgsNum = innerArgs.size() - otherArgsNum - i;
-                            if(variableArgsNum <= 0){
-                                // 没有传可变参数
-                                innerArgsList.add(null);
-                            }else{
-                                if (aClass.isArray()) {
-                                    // 获取数组元素的类型
-                                    Class<?> componentType = aClass.getComponentType();
-                                    if (ObjectUtil.isEmpty(innerArgs) || innerArgs.size() - curArgsIndex < 0) {
-                                        innerArgsList.add(null);
-                                        break ;
-                                    }
-                                    Object arguments = Array.newInstance(componentType, variableArgsNum);
-                                    int j = 0;
-                                    while (j+i < innerArgs.size() - otherArgsNum) {
-                                        Object convert = null;
-                                        innerArg = innerArgs.get(j+i);
-                                        try {
-                                            convert = Convert.convert(componentType,innerArg);
-                                        }catch (Exception e){
-                                            e.printStackTrace();
-                                        }
-                                        Array.set(arguments, j++, convert);
-                                    }
-                                    innerArgsList.add(arguments);
-                                    curArgsIndex += j;
-                                    continue ;
-                                }
-                                else if (Map.class.isAssignableFrom(aClass)) {
-                                    Map<Object,Object> temp = new LinkedHashMap<>();
-                                    Object innerArgKey = null;
-                                    Object innerArgValue = null;
-                                    Class<?> keyClazz = Object.class;
-                                    Class<?> valueClazz = Object.class;
-                                    TypeReference functionVariableArgsType = getFunctionVariableArgsType(methodName, aClass);
-                                    if(ObjectUtil.isNotEmpty(functionVariableArgsType)){
-                                        keyClazz = functionVariableArgsType.getArgGenericityType1();
-                                        valueClazz = functionVariableArgsType.getArgGenericityType2();
-                                    }
-                                    int j = 0;
-                                    for (;j+i < innerArgs.size() - otherArgsNum;j+=2) {
-                                        Object convert = null;
-                                        innerArgKey = null;
-                                        innerArgKey = innerArgs.get(j+i);
-                                        innerArgValue = null;
-                                        try {
-                                            innerArgKey = Convert.convert(keyClazz,innerArgKey);
-                                        }catch (Exception e){
-                                            e.printStackTrace();
-                                        }
-                                        if(j+i+1 < innerArgs.size()){
-                                            innerArgValue = innerArgs.get(j+i+1);
-                                            try {
-                                                convert = Convert.convert(valueClazz,innerArgValue);
-                                            }catch (Exception e){
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                        if(ObjectUtil.isNotEmpty(innerArgKey)){
-                                            temp.put(innerArgKey,convert);
-                                        }
-                                    }
-                                    Object convert = null;
-                                    try {
-                                        convert = Convert.convert(aClass, temp);
-                                    }catch (Exception e){
-                                        e.printStackTrace();
-                                    }
-                                    innerArgsList.add(convert);
-                                    curArgsIndex += j;
-                                    continue ;
-                                }
-                                else if (Collection.class.isAssignableFrom(aClass)) {
-                                    List<Object> temp = new ArrayList<>();
-                                    Class<?> valueClazz = Object.class;
-                                    TypeReference functionVariableArgsType = getFunctionVariableArgsType(methodName, aClass);
-                                    if(ObjectUtil.isNotEmpty(functionVariableArgsType)){
-                                        valueClazz = functionVariableArgsType.getArgGenericityType1();
-                                    }
-                                    int j = 0;
-                                    while (j+i < innerArgs.size() - otherArgsNum) {
-                                        Object convert = null;
-                                        innerArg = innerArgs.get(j+i);
-                                        try {
-                                            convert = Convert.convert(valueClazz,innerArg);
-                                        }catch (Exception e){
-                                            e.printStackTrace();
-                                        }
-                                        temp.add(convert);
-                                        j++;
-                                    }
-                                    Object convert = null;
-                                    try {
-                                        convert = Convert.convert(aClass, temp);
-                                    }catch (Exception e){
-                                        e.printStackTrace();
-                                    }
-                                    innerArgsList.add(convert);
-                                    curArgsIndex += j;
-                                    continue ;
-                                }
-                            }
-                        }
-                        else {
-                            Object convert = null;
-                            try {
-                                convert = Convert.convert(aClass,innerArg);
-                            }catch (Exception e){
-                                e.printStackTrace();
-                            }
-                            innerArgsList.add(convert);
-                            curArgsIndex++;
-                        }
-                    }
-                    result = method.invoke(null, innerArgsList.toArray());
-                }
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }finally {
-                CurContextProxy curContext = CurContext.getCurContext();
-                if(ObjectUtil.isNotEmpty(curContext)){
-                    curContext.setJsonSqlVisitor(null);
-                }
-                CurContext.remove();
-            }
+            Object[] wrapperMethodArgs = MethodUtil.wrapperMethodArgs(this,innerArgs, methodName, argsTypeClasses);
+            result = MethodUtil.invokeMethod(method, wrapperMethodArgs);
         }
-
         return result;
     }
 

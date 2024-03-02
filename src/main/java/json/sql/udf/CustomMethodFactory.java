@@ -3,10 +3,7 @@ package json.sql.udf;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ObjectUtil;
 import json.sql.JsonSqlContext;
-import json.sql.annotation.PackageAnnotationScanner;
-import json.sql.annotation.UdfClass;
-import json.sql.annotation.UdfMethod;
-import json.sql.annotation.UdfParser;
+import json.sql.annotation.*;
 import json.sql.lister.LifecycleListener;
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,4 +46,30 @@ public class CustomMethodFactory {
         lifecycleListener.forEach(listener -> listener.innerRegisterUdfFinish(jsonSqlContext));
     }
 
+    public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext) {
+        Set<Method> udfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(CompareSymbolMethod.class);
+        if(ObjectUtil.isNotEmpty(udfMethods)){
+            for (Method udfMethod : udfMethods) {
+                try {
+                    CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext,udfMethod);
+                }catch (Exception e){
+                    Class<?>[] parameterTypes = udfMethod.getParameterTypes();
+                    // 获取所在类的 Class 对象
+                    Class<?> clazz = udfMethod.getDeclaringClass();
+                    log.info("注册运算符 函数失败!class : {} ,method : {} ,parameterTypes : {}",clazz.getName(),udfMethod.getName(),parameterTypes);
+                    log.error("注册运算符 函数失败!",e);
+                }
+            }
+        }
+        Method[] ignoreMethods = null;
+        if(ObjectUtil.isNotEmpty(udfMethods)){
+            ignoreMethods = udfMethods.toArray(new Method[0]);
+        }
+        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CompareSymbolClass.class);
+        if(ObjectUtil.isNotEmpty(classes)){
+            for (Class<?> aClass : classes) {
+                CompareSymbolParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
+            }
+        }
+    }
 }

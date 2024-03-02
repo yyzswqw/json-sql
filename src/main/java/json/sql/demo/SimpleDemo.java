@@ -2,6 +2,7 @@ package json.sql.demo;
 
 import com.jayway.jsonpath.DocumentContext;
 import json.sql.JsonSqlContext;
+import json.sql.annotation.CompareSymbolParser;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.UdfFunctionDescInfo;
@@ -71,7 +72,8 @@ public class SimpleDemo {
 //        String sql = "create table c1 select if(1=1,1,2) from a1";
 //        String sql = "drop c1;";
 //        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1";
-        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1;update c1 set $rename('$','_c0','ab'),ab=ab+1;select * from c1;";
+//        String sql = "drop c1;create table c1 select if(1=1,1,2) from a1;select * from c1;update c1 set aa=_c0;select * from c1;update c1 set $rename('$','_c0','ab'),ab=ab+1;select * from c1;";
+        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 where 1 compareSymbol('>q') 3";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -122,6 +124,12 @@ public class SimpleDemo {
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
         UdfParser.classParser(jsonSqlContext,UdfDemo.class, false,(String[])null);
+        try {
+            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     // 手动注册自定义UDF函数

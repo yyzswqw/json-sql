@@ -35,6 +35,19 @@ public class JsonSqlContext {
         return new Builder();
     }
 
+    public void registerCompareSymbolFunction(String symbol, Method method) {
+        this.jsonSqlVisitor.registerCompareSymbolFunction(symbol,method);
+    }
+    /**
+     * 注册自定义运算符函数
+     * @param symbol 运算符
+     * @param method 方法
+     * @param argsTypes 参数类型列表
+     */
+    public void registerCompareSymbolFunction(String symbol, Method method, cn.hutool.core.lang.TypeReference[] argsTypes) {
+        this.jsonSqlVisitor.registerCompareSymbolFunction(symbol,method,argsTypes);
+    }
+
     public static class Builder {
 
         private final List<LifecycleListener> lifecycleListeners = new ArrayList<>();
@@ -49,6 +62,7 @@ public class JsonSqlContext {
                 jsonSqlContext.getLifecycleListener().addAll(lifecycleListeners);
             }
             CustomMethodFactory.registerCustomMethod(jsonSqlContext);
+            CustomMethodFactory.registerCompareSymbolMethod(jsonSqlContext);
             return jsonSqlContext;
         }
 

@@ -55,6 +55,7 @@ fromLable: 'FROM' | 'from';
 asLable: 'AS' | 'as';
 starLable: '*';
 
+customCompareFunction: 'compareSymbol(' STRING ')';
 toJsonFunction: 'toJson(' STRING ')';
 toJsonByPathFunction: 'toJsonByPath(' STRING ')';
 jsonPathFunction: 'jsonPath(' STRING ')';
@@ -89,7 +90,7 @@ expression : orExpr | '(' expression ')';
 orExpr : andExpr (orLable andExpr)* | '(' expression ')';
 andExpr : equalityExpr (andLable equalityExpr)* | '(' expression ')' ;
 equalityExpr : (relationalExpr comparisonOperator relationalExpr) | boolLable | isNullExpression | inSubqueryExpression | existsSubqueryExpression | betweenExpression | likeExpression | '(' expression ')';
-comparisonOperator : '=' | '<>' | '!=' | '<' | '<=' | '>' | '>=';
+comparisonOperator : '=' | '<>' | '!=' | '<' | '<=' | '>' | '>=' | customCompareFunction;
 
 relationalExpr: relationalExpr op=('*'|'/'|'%') relationalExpr           # MulDiv
             | relationalExpr op=('+'|'-') relationalExpr                 # AddSub

@@ -16,6 +16,7 @@
 - JSON字段的修改
 - 支持加减乘除取余四则运算
 - 支持逻辑比较符
+- 支持注册自定义逻辑比较符函数
 - 支持SQL函数
 - 支持子查询关联查询其他表
   - select * from t1 where a in (select b from t2 where 1=1 as b)，select子句返回的是json串，需要后面使用as表达式说明使用的字段名称
@@ -41,6 +42,7 @@
 - `>= ` 大于等于
 - `and`
 - `or`
+- `compareSymbol('自定义比较符')`
 
 # 支持的SQL statement
 
@@ -93,6 +95,20 @@
 3、由`CUR_CONTEXT_PROXY`参数调用`getMacro(MacroEnum macroEnum)`方法
 
 4、调用`MacroParamArgsContext`的`remove()`方法清除参数列表，防止后续UDF函数获取到错误的参数
+
+# 注册自定义逻辑比较符
+
+1、函数只能是公用的静态（public static）方法
+
+2、函数只能有两个参数
+
+3、函数的返回值必须是`boolean`类型
+
+4、使用`@CompareSymbolMethod`注解的方法或者`@CompareSymbolClass`注解的类会被自动注册，无须手动注册
+
+5、未使用注解注册的函数，可手动显示注册，可参考下方示例中`注册自定义UDF函数`模块
+
+6、注册时，如果已存在同名比较符函数，该函数会注册失败，与内置比较符不冲突
 
 # 注册UDF函数
 
@@ -564,12 +580,33 @@ public class CustomMethod {
 
 }
 ```
+
+
+
+```java
+// 自定义比较符函数
+public class CustomCompareSymbolDemo {
+
+    public static Boolean a(int a, List<String> b){
+        return a > Integer.parseInt(b.get(0));
+    }
+
+}
+```
+
+
+
 ```java
 public class SimpleDemo {
 
   public static void main(String[] args) {
       JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
       registerDemo(jsonSqlContext);
+      try {
+            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
   }
     
   // 手动注册自定义UDF函数
