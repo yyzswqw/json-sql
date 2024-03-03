@@ -367,7 +367,7 @@ format
 toDataMap
 	desc: 将数据转换为java map类型
 	Source By Class : unknown
-	Returns: Object
+	Returns: Map<Object,Object>
 	Args:
 		data
 			Map<Object,Object>	待转换数据
@@ -375,7 +375,7 @@ toDataMap
 toDataMapWithStrKey
 	desc: 将数据转换为java map类型,并将key转为string
 	Source By Class : unknown
-	Returns: Object
+	Returns: Map<String,Object>
 	Args:
 		data
 			Map<String,Object>	待转换数据

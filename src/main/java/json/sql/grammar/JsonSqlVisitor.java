@@ -9,6 +9,7 @@ import com.google.common.collect.Table;
 import com.jayway.jsonpath.*;
 import json.sql.CurContextProxy;
 import json.sql.annotation.CompareSymbolParser;
+import json.sql.annotation.OperatorSymbolParser;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.TableContext;
@@ -499,7 +500,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * @param method 方法
      */
     public void registerLowOperatorSymbolFunction(String symbol, Method method){
-        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = OperatorSymbolParser.getMethodArgsType(method);
         if(ObjectUtil.isEmpty(methodArgsType)){
             this.registerLowOperatorSymbolFunction(symbol, method,null);
             return;
@@ -530,7 +531,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * @param method 方法
      */
     public void registerHighOperatorSymbolFunction(String symbol, Method method){
-        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = OperatorSymbolParser.getMethodArgsType(method);
         if(ObjectUtil.isEmpty(methodArgsType)){
             this.registerHighOperatorSymbolFunction(symbol, method,null);
             return;

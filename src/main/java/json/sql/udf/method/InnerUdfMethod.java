@@ -19,12 +19,12 @@ import java.util.regex.Pattern;
 public class InnerUdfMethod {
 
     @UdfMethod(functionName = "toDataMapWithStrKey",desc = "将数据转换为java map类型,并将key转为string")
-    public static Object toDataMapWithStrKey(@UdfParam(desc = "待转换数据") Map<String,Object> data){
+    public static Map<String,Object> toDataMapWithStrKey(@UdfParam(desc = "待转换数据") Map<String,Object> data){
         return data;
     }
 
     @UdfMethod(functionName = "toDataMap",desc = "将数据转换为java map类型")
-    public static Object toDataMap(@UdfParam(desc = "待转换数据") Map<Object,Object> data){
+    public static Map<Object,Object> toDataMap(@UdfParam(desc = "待转换数据") Map<Object,Object> data){
         return data;
     }
 
