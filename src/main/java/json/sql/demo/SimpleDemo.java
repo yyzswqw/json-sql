@@ -79,7 +79,7 @@ public class SimpleDemo {
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = (5 lowOpSymbol('sizeAdd') 1 > 0 )";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = 5 lowOpSymbol('sizeAdd') 1";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = $toDataMap('java.util.List',5,2,1,'3','aa',true) lowOpSymbol('sizeAdd') 1";
-        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = $toDataMapWithStrKey(5,2,1,'3','aa',true) lowOpSymbol('sizeAdd') 1";
+//        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1 ,bb = $toDataMapWithStrKey(5,2,1,'3','aa',true) lowOpSymbol('sizeAdd') 1";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$.store.book[*].author'),aa=-4-1,ab = $explode('store.temp2',10,'a1','b1',1,true),age = jsonPath('age')%4 + age";
 //        String sql = "update a1 set jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 is not null or (p3 = p1 and (p4 is null))";
 //        String sql = "update a1 SET jsonPath('name') = jsonPath('$..book[-1:][\"category\"]'),age = jsonPath('age')%4 + age,p1=123 where p2 = 'aa'";
@@ -87,7 +87,7 @@ public class SimpleDemo {
 //        String sql = "update a1 SET age = jsonPath('$.age')%4 + age,name = 1";
 //        String sql = "update a1 SET name = 'a',age = 31 where      name = 'a1'";
 //        String sql = "update a1 SET name = 'a',age = 31 where true";
-//        String sql = "update a1 SET name = 'a',age = 31 where aa IS NOT NULL";
+        String sql = "update a1 SET name = 'a',age = 31,jsonPath('store.bicycle.abc.abc.v.d') = 31 where aa IS NULL";
 //        String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.isbn)]') where aa IS NULL";
 //        String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..*') where aa IS NULL";
 //        String sql = "update a1 SET name = 'a',age = 31,ab=jsonPath('$..book[?(@.price<10)]') where aa IS NULL";
