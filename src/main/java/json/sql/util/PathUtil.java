@@ -30,6 +30,10 @@ public class PathUtil {
             if("$".equals(path)){
                 continue;
             }
+            // $..name,这种写法就会是空
+            if(ObjectUtil.isEmpty(path)){
+                continue;
+            }
             Object jsonValue = getJsonValue(documentContext, parentPath+"."+path, Object.class);
             if(ObjectUtil.isEmpty(jsonValue)){
                 if (path.contains("[")) {
