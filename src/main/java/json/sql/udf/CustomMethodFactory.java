@@ -9,20 +9,44 @@ import json.sql.lister.LifecycleListener;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 @Slf4j
 public class CustomMethodFactory {
+
+    private static Set<Method> udfMethodsByAnnotationCache;
+    private static Set<Class<?>> udfMethodsByClassCache;
+    private static Set<Method> compareSymbolMethodByAnnotationCache;
+    private static Set<Class<?>> compareSymbolMethodByClassCache;
+    private static Set<Method> calculateOperatorSymbolMethodByAnnotationCache;
+    private static Set<Class<?>> calculateOperatorSymbolMethodByClassCache;
+
+    private static final ReentrantLock UDF_METHODS_LOCK = new ReentrantLock();
+    private static final ReentrantLock COMPARE_SYMBOL_METHOD_LOCK = new ReentrantLock();
+    private static final ReentrantLock CALCULATE_OPERATOR_SYMBOL_METHOD_LOCK = new ReentrantLock();
 
     /**
      * 注册udf函数
      * @param jsonSqlContext 上下文
      */
     public static void registerCustomMethod(JsonSqlContext jsonSqlContext) {
-        Set<Method> udfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(UdfMethod.class);
+        Set<Method> udfMethods = udfMethodsByAnnotationCache;
+        if(ObjectUtil.isNull(udfMethods)){
+            try {
+                UDF_METHODS_LOCK.lock();
+                if(ObjectUtil.isNull(udfMethodsByAnnotationCache)){
+                    udfMethodsByAnnotationCache = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(UdfMethod.class);
+                }
+            }finally {
+                UDF_METHODS_LOCK.unlock();
+            }
+        }
+        udfMethods = udfMethodsByAnnotationCache;
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
                 try {
@@ -40,7 +64,18 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             ignoreMethods = udfMethods.toArray(new Method[0]);
         }
-        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(UdfClass.class);
+        Set<Class<?>> classes = udfMethodsByClassCache;
+        if(ObjectUtil.isNull(classes)){
+            try {
+                UDF_METHODS_LOCK.lock();
+                if(ObjectUtil.isNull(udfMethodsByClassCache)){
+                    udfMethodsByClassCache = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(UdfClass.class);
+                }
+            }finally {
+                UDF_METHODS_LOCK.unlock();
+            }
+        }
+        classes = udfMethodsByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
                 UdfParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
@@ -57,7 +92,18 @@ public class CustomMethodFactory {
      * @param jsonSqlContext 上下文
      */
     public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext) {
-        Set<Method> udfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(CompareSymbolMethod.class);
+        Set<Method> udfMethods = compareSymbolMethodByAnnotationCache;
+        if(ObjectUtil.isNull(udfMethods)){
+            try {
+                COMPARE_SYMBOL_METHOD_LOCK.lock();
+                if(ObjectUtil.isNull(compareSymbolMethodByAnnotationCache)){
+                    compareSymbolMethodByAnnotationCache = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(CompareSymbolMethod.class);
+                }
+            }finally {
+                COMPARE_SYMBOL_METHOD_LOCK.unlock();
+            }
+        }
+        udfMethods = compareSymbolMethodByAnnotationCache;
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
                 try {
@@ -75,7 +121,18 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             ignoreMethods = udfMethods.toArray(new Method[0]);
         }
-        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CompareSymbolClass.class);
+        Set<Class<?>> classes = compareSymbolMethodByClassCache;
+        if(ObjectUtil.isNull(classes)){
+            try {
+                COMPARE_SYMBOL_METHOD_LOCK.lock();
+                if(ObjectUtil.isNull(compareSymbolMethodByClassCache)){
+                    compareSymbolMethodByClassCache = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CompareSymbolClass.class);
+                }
+            }finally {
+                COMPARE_SYMBOL_METHOD_LOCK.unlock();
+            }
+        }
+        classes = compareSymbolMethodByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
                 CompareSymbolParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
@@ -88,14 +145,29 @@ public class CustomMethodFactory {
      * @param jsonSqlContext 上下文
      */
     public static void registerCalculateOperatorSymbolMethod(JsonSqlContext jsonSqlContext) {
-        Set<Method> highUdfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(HighOperatorSymbolMethod.class);
-        Set<Method> lowUdfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(LowOperatorSymbolMethod.class);
         Set<Method> udfMethods = new LinkedHashSet<>();
-        if(ObjectUtil.isNotEmpty(highUdfMethods)){
-            udfMethods.addAll(highUdfMethods);
-        }
-        if(ObjectUtil.isNotEmpty(lowUdfMethods)){
-            udfMethods.addAll(lowUdfMethods);
+        if(ObjectUtil.isNotNull(calculateOperatorSymbolMethodByAnnotationCache)){
+            udfMethods = calculateOperatorSymbolMethodByAnnotationCache;
+        }else {
+            try {
+                CALCULATE_OPERATOR_SYMBOL_METHOD_LOCK.lock();
+                if(ObjectUtil.isNull(calculateOperatorSymbolMethodByAnnotationCache)){
+                    Set<Method> highUdfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(HighOperatorSymbolMethod.class);
+                    Set<Method> lowUdfMethods = PackageAnnotationScanner.scanMethodByAnnotationInClasspath(LowOperatorSymbolMethod.class);
+                    if(ObjectUtil.isNotEmpty(highUdfMethods)){
+                        udfMethods.addAll(highUdfMethods);
+                    }
+                    if(ObjectUtil.isNotEmpty(lowUdfMethods)){
+                        udfMethods.addAll(lowUdfMethods);
+                    }
+                    calculateOperatorSymbolMethodByAnnotationCache = new HashSet<>();
+                    if(ObjectUtil.isNotEmpty(udfMethods)){
+                        calculateOperatorSymbolMethodByAnnotationCache.addAll(udfMethods);
+                    }
+                }
+            }finally {
+                CALCULATE_OPERATOR_SYMBOL_METHOD_LOCK.unlock();
+            }
         }
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
@@ -114,7 +186,18 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             ignoreMethods = udfMethods.toArray(new Method[0]);
         }
-        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CalculateOperatorSymbolClass.class);
+        Set<Class<?>> classes = calculateOperatorSymbolMethodByClassCache;
+        if(ObjectUtil.isNull(classes)){
+            try {
+                CALCULATE_OPERATOR_SYMBOL_METHOD_LOCK.lock();
+                if(ObjectUtil.isNull(calculateOperatorSymbolMethodByClassCache)){
+                    calculateOperatorSymbolMethodByClassCache = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CalculateOperatorSymbolClass.class);
+                }
+            }finally {
+                CALCULATE_OPERATOR_SYMBOL_METHOD_LOCK.unlock();
+            }
+        }
+        classes = calculateOperatorSymbolMethodByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
                 OperatorSymbolParser.classParser(jsonSqlContext,aClass,CalculateOperatorSymbolLevel.BOTH ,ignoreMethods);
