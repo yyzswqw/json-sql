@@ -9,6 +9,7 @@ import com.google.common.collect.Table;
 import com.jayway.jsonpath.*;
 import json.sql.CurContextProxy;
 import json.sql.annotation.CompareSymbolParser;
+import json.sql.annotation.OperatorSymbolParser;
 import json.sql.annotation.UdfParser;
 import json.sql.config.TableConfig;
 import json.sql.entity.TableContext;
@@ -20,10 +21,7 @@ import json.sql.parse.SqlParser;
 import json.sql.udf.ListTypeReference;
 import json.sql.udf.MapTypeReference;
 import json.sql.udf.TypeReference;
-import json.sql.util.CompareUtil;
-import json.sql.util.CurContext;
-import json.sql.util.MacroParamArgsContext;
-import json.sql.util.MethodUtil;
+import json.sql.util.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
@@ -499,7 +497,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * @param method 方法
      */
     public void registerLowOperatorSymbolFunction(String symbol, Method method){
-        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = OperatorSymbolParser.getMethodArgsType(method);
         if(ObjectUtil.isEmpty(methodArgsType)){
             this.registerLowOperatorSymbolFunction(symbol, method,null);
             return;
@@ -530,7 +528,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      * @param method 方法
      */
     public void registerHighOperatorSymbolFunction(String symbol, Method method){
-        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = CompareSymbolParser.getMethodArgsType(method);
+        cn.hutool.core.lang.TypeReference<?>[] methodArgsType = OperatorSymbolParser.getMethodArgsType(method);
         if(ObjectUtil.isEmpty(methodArgsType)){
             this.registerHighOperatorSymbolFunction(symbol, method,null);
             return;
@@ -1213,6 +1211,13 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             }
         }catch (PathNotFoundException e){
             // 没有这个节点，新增
+            Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
+            if(writeModel){
+                PathUtil.createPath(this.getTableContextNewDocument(tableName),jsonPath);
+            }else{
+                PathUtil.createPath(this.getTableContextDocument(tableName),jsonPath);
+            }
+
             int i = jsonPath.lastIndexOf(".");
             String firstPath = null;
             String namePath = null;
@@ -1223,11 +1228,18 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
                 firstPath = "$";
                 namePath = jsonPath;
             }
-            Boolean writeModel = this.getTableContextConfig(tableName, TableConfig.WRITE_MODEL, Boolean.class,false);
             if(writeModel){
-                this.getTableContextNewDocument(tableName).put(firstPath,namePath, value);
+                try {
+                    this.getTableContextNewDocument(tableName).set(jsonPath, value);
+                }catch (Exception e1){
+                    this.getTableContextNewDocument(tableName).put(firstPath,namePath, value);
+                }
             }else{
-                this.getTableContextDocument(tableName).put(firstPath,namePath, value);
+                try {
+                    this.getTableContextDocument(tableName).set(jsonPath, value);
+                }catch (Exception e1){
+                    this.getTableContextDocument(tableName).put(firstPath,namePath, value);
+                }
             }
         }
         return null;

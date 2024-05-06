@@ -2,21 +2,19 @@ package json.sql;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
-import json.sql.annotation.CompareSymbolParser;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
-import json.sql.grammar.*;
+import json.sql.grammar.JsonSqlVisitor;
+import json.sql.grammar.ParserErrorListener;
 import json.sql.lister.LifecycleListener;
 import json.sql.udf.CustomMethodFactory;
 import json.sql.udf.TypeReference;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.atn.ATNConfigSet;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.ANTLRErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ConsoleErrorListener;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -91,8 +89,9 @@ public class JsonSqlContext {
 
         private final List<LifecycleListener> lifecycleListeners = new ArrayList<>();
 
-        public void addLifecycleListener(LifecycleListener listener){
+        public Builder addLifecycleListener(LifecycleListener listener){
             lifecycleListeners.add(listener);
+            return this;
         }
 
         public JsonSqlContext build(){
