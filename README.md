@@ -869,13 +869,13 @@ public class SimpleDemo {
       registerDemo(jsonSqlContext);
       // 显式注册比较运算符
       try {
-            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class),true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
       // 显式注册计算运算符
         try {
-            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH);
+            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH,true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
