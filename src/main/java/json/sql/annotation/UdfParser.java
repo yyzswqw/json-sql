@@ -26,9 +26,10 @@ public class UdfParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreMethodName 需要忽略的方法名
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,String ... ignoreMethodName){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,boolean printErrorInfo,String ... ignoreMethodName){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<String> ignoreMethodNameSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreMethodName)){
@@ -52,9 +53,9 @@ public class UdfParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerUdfMethod(jsonSqlContext, method);
+                registerUdfMethod(jsonSqlContext, method,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册udf 函数失败!",e);
                 }
@@ -68,9 +69,10 @@ public class UdfParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreMethod 需要忽略的方法
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,Method ... ignoreMethod){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,boolean printErrorInfo,Method ... ignoreMethod){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<Method> ignoreMethodSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreMethod)){
@@ -94,9 +96,9 @@ public class UdfParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerUdfMethod(jsonSqlContext, method);
+                registerUdfMethod(jsonSqlContext, method,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册udf 函数失败! functionName : {} ,class : {} ,method : {} ,parameterTypes : {}",functionName,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册udf 函数失败!",e);
                 }
@@ -108,8 +110,9 @@ public class UdfParser {
      * 注册一个udf函数
      * @param jsonSqlContext jsonSqlContext
      * @param method method
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      */
-    public static void registerUdfMethod(JsonSqlContext jsonSqlContext, Method method) {
+    public static void registerUdfMethod(JsonSqlContext jsonSqlContext, Method method,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return ;
         }
@@ -127,8 +130,8 @@ public class UdfParser {
         Parameter[] parameters = method.getParameters();
         Type[] genericParameterTypes = method.getGenericParameterTypes();
 
-        if(!checkUdfMethod(method)){
-            if (log.isDebugEnabled()) {
+        if(!checkUdfMethod(method,printErrorInfo)){
+            if (printErrorInfo && log.isDebugEnabled()) {
                 log.debug("udf 函数不符合规范! functionName : {} ,method : {} ,parameterTypes : {}", functionName, method.getName(),parameterTypes);
             }
             return;
@@ -334,9 +337,10 @@ public class UdfParser {
     /**
      * 校验一个方法是否可以被注册为UDF
      * @param method method
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @return true:是，false:否
      */
-    public static boolean checkUdfMethod(Method method) {
+    public static boolean checkUdfMethod(Method method,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return false;
         }
@@ -355,7 +359,7 @@ public class UdfParser {
                 continue;
             }
             if(macroIndex != i){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("check udf method result : false . reason : {} , methodName : {} , parameterTypes : {}","参数列表中宏参数不都在参数列表的最前面",method.getName(),parameterTypes);
                 }
                 return false;
@@ -374,7 +378,7 @@ public class UdfParser {
             if(parameterType.isArray() || Map.class.isAssignableFrom(parameterType) || Collection.class.isAssignableFrom(parameterType)){
                 variableArgsNum +=1 ;
                 if(variableArgsNum > 1){
-                    if (log.isDebugEnabled()) {
+                    if (printErrorInfo && log.isDebugEnabled()) {
                         log.debug("check udf method result : false . reason : {} , methodName : {} , parameterTypes : {}","可变参数不止一个",method.getName(),parameterTypes);
                     }
                     return false;

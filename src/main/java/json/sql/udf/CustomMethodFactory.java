@@ -50,7 +50,7 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
                 try {
-                    UdfParser.registerUdfMethod(jsonSqlContext,udfMethod);
+                    UdfParser.registerUdfMethod(jsonSqlContext,udfMethod,false);
                 }catch (Exception e){
                     Class<?>[] parameterTypes = udfMethod.getParameterTypes();
                     // 获取所在类的 Class 对象
@@ -78,11 +78,11 @@ public class CustomMethodFactory {
         classes = udfMethodsByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
-                UdfParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
+                UdfParser.classParser(jsonSqlContext,aClass, false,false, ignoreMethods);
             }
         }
-        UdfParser.classParser(jsonSqlContext,ObjectUtil.class, false, (Method[])null);
-        UdfParser.classParser(jsonSqlContext, DateUtil.class, false, (Method[])null);
+        UdfParser.classParser(jsonSqlContext,ObjectUtil.class, false,false, (Method[])null);
+        UdfParser.classParser(jsonSqlContext, DateUtil.class, false,false, (Method[])null);
         List<LifecycleListener> lifecycleListener = jsonSqlContext.getLifecycleListener();
         lifecycleListener.forEach(listener -> listener.innerRegisterUdfFinish(jsonSqlContext));
     }
@@ -107,7 +107,7 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
                 try {
-                    CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext,udfMethod);
+                    CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext,udfMethod,false);
                 }catch (Exception e){
                     Class<?>[] parameterTypes = udfMethod.getParameterTypes();
                     // 获取所在类的 Class 对象
@@ -135,7 +135,7 @@ public class CustomMethodFactory {
         classes = compareSymbolMethodByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
-                CompareSymbolParser.classParser(jsonSqlContext,aClass, false, ignoreMethods);
+                CompareSymbolParser.classParser(jsonSqlContext,aClass, false,false, ignoreMethods);
             }
         }
     }
@@ -172,7 +172,7 @@ public class CustomMethodFactory {
         if(ObjectUtil.isNotEmpty(udfMethods)){
             for (Method udfMethod : udfMethods) {
                 try {
-                    OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,udfMethod, CalculateOperatorSymbolLevel.NONE);
+                    OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,udfMethod, CalculateOperatorSymbolLevel.NONE,false);
                 }catch (Exception e){
                     Class<?>[] parameterTypes = udfMethod.getParameterTypes();
                     // 获取所在类的 Class 对象
@@ -200,7 +200,7 @@ public class CustomMethodFactory {
         classes = calculateOperatorSymbolMethodByClassCache;
         if(ObjectUtil.isNotEmpty(classes)){
             for (Class<?> aClass : classes) {
-                OperatorSymbolParser.classParser(jsonSqlContext,aClass,CalculateOperatorSymbolLevel.BOTH ,ignoreMethods);
+                OperatorSymbolParser.classParser(jsonSqlContext,aClass,CalculateOperatorSymbolLevel.BOTH ,false,ignoreMethods);
             }
         }
     }

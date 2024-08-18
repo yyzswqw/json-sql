@@ -2,6 +2,8 @@ package json.sql;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.*;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
@@ -16,6 +18,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ConsoleErrorListener;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -163,6 +166,52 @@ public class JsonSqlContext {
      */
     public Integer dropTable(String tableName) {
         return jsonSqlVisitor.dropTable(tableName);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonContentFile json数据文件，只能有一条json,可以换行
+     */
+    public void registerTable(String tableName, File jsonContentFile) {
+        jsonSqlVisitor.registerTable(tableName,jsonContentFile);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonContentFile json数据文件，只能有一条json,可以换行
+     * @param config 配置项
+     */
+    public void registerTable(String tableName, File jsonContentFile, Map<String,Object> config) {
+        jsonSqlVisitor.registerTable(tableName,jsonContentFile,config);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonObj 自定义对象
+     */
+    public void registerTable(String tableName,Object jsonObj) {
+        jsonSqlVisitor.registerTable(tableName,jsonObj);
+    }
+
+    /**
+     * 将javaBean转换为json字符串
+     * @param javaBean 自定义对象
+     */
+    public String toJsonString(Object javaBean) {
+        return jsonSqlVisitor.toJsonString(javaBean);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonObj 自定义对象
+     * @param config 配置项
+     */
+    public void registerTable(String tableName,Object jsonObj,Map<String,Object> config) {
+        jsonSqlVisitor.registerTable(tableName,jsonObj,config);
     }
 
     /**
@@ -346,56 +395,55 @@ public class JsonSqlContext {
     }
 
     /**
+     * 将一个json格式的字段串转换为csv
+     * @param json json格式的字符串
+     * @param outputHeader 是否输出表头
+     * @return csv字符串
+     */
+    public String jsonToCsv(String json,boolean outputHeader) {
+        return jsonSqlVisitor.jsonToCsv(json,outputHeader);
+    }
+
+    /**
+     * 将一个sql结果转换为 csv
+     * @param sql sql
+     * @param outputHeader 是否输出表头
+     * @return csv字符串
+     */
+    public String resultToCsv(String sql,boolean outputHeader) {
+        String result = this.sql(sql);
+        return jsonSqlVisitor.jsonToCsv(result,outputHeader);
+    }
+
+    /**
+     * 将表中数据转换为 csv
+     * @param tableName 表名
+     * @param outputHeader 是否输出表头
+     * @return csv字符串
+     */
+    public String tableToCsv(String tableName,boolean outputHeader) {
+        String result = jsonSqlVisitor.getResult(tableName);
+        return jsonSqlVisitor.jsonToCsv(result,outputHeader);
+    }
+
+
+
+    /**
      * 执行sql
      * @param sql sql
      * @return 执行结果，为空则返回主表结果
      */
     public String sql(String sql){
-        json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
-        json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
-        ParserErrorListener parserErrorListener = new ParserErrorListener();
-        parser.addErrorListener(parserErrorListener);
-        lexer.addErrorListener(parserErrorListener);
+        return jsonSqlVisitor.sql(sql);
+    }
 
-        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
-        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
-        int consoleErrorListenerIndex;
-        do {
-            consoleErrorListenerIndex = -1;
-            for (int i = 0; i < errorListeners.size(); i++) {
-                ANTLRErrorListener next = errorListeners.get(i);
-                if(next instanceof ConsoleErrorListener){
-                    consoleErrorListenerIndex = i;
-                    break;
-                }
-            }
-            if(consoleErrorListenerIndex != -1){
-                errorListeners.remove(consoleErrorListenerIndex);
-            }
-        }while (consoleErrorListenerIndex != -1);
-
-        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
-        do {
-            consoleErrorListenerIndex = -1;
-            for (int i = 0; i < lexerErrorListeners.size(); i++) {
-                ANTLRErrorListener next = lexerErrorListeners.get(i);
-                if(next instanceof ConsoleErrorListener){
-                    consoleErrorListenerIndex = i;
-                    break;
-                }
-            }
-            if(consoleErrorListenerIndex != -1){
-                lexerErrorListeners.remove(consoleErrorListenerIndex);
-            }
-        }while (consoleErrorListenerIndex != -1);
-
-        ParseTree tree = parser.sql();
-        if (parserErrorListener.hasError()) {
-            List<String> errors = parserErrorListener.errors();
-            String join = String.join("\n", errors);
-            throw new RuntimeException("parser errors : "+join);
-        }
-        return jsonSqlVisitor.exec(tree);
+    /**
+     * 执行sql文件
+     * @param sqlFile sql文件
+     * @return 执行结果，为空则返回主表结果
+     */
+    public String sql(File sqlFile){
+        return jsonSqlVisitor.sql(sqlFile);
     }
 
 

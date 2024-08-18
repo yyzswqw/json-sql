@@ -20,9 +20,10 @@ public class CompareSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreSymbolName 需要忽略的符号名
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,String ... ignoreSymbolName){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,boolean printErrorInfo,String ... ignoreSymbolName){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<String> ignoreSymbolNameSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreSymbolName)){
@@ -46,9 +47,9 @@ public class CompareSymbolParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerCompareSymbolMethod(jsonSqlContext, method);
+                registerCompareSymbolMethod(jsonSqlContext, method,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册比较运算符 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册比较运算符 函数失败!",e);
                 }
@@ -62,9 +63,10 @@ public class CompareSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param onlyParseAnnotation 是否只解析带有注解的函数
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreMethod 需要忽略的方法
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,Method ... ignoreMethod){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,boolean onlyParseAnnotation,boolean printErrorInfo,Method ... ignoreMethod){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<Method> ignoreMethodSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreMethod)){
@@ -88,9 +90,9 @@ public class CompareSymbolParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerCompareSymbolMethod(jsonSqlContext, method);
+                registerCompareSymbolMethod(jsonSqlContext, method,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册比较运算符 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册比较运算符 函数失败!",e);
                 }
@@ -102,8 +104,9 @@ public class CompareSymbolParser {
      * 注册一个自定义比较符函数
      * @param jsonSqlContext jsonSqlContext
      * @param method method
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      */
-    public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext, Method method) {
+    public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext, Method method,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return ;
         }
@@ -120,7 +123,7 @@ public class CompareSymbolParser {
         Class<?>[] parameterTypes = method.getParameterTypes();
 
         if(!checkCompareMethod(method)){
-            if (log.isDebugEnabled()) {
+            if (printErrorInfo && log.isDebugEnabled()) {
                 log.debug("比较运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
             }
             return;
@@ -133,8 +136,9 @@ public class CompareSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param symbol 比较符标识
      * @param method method
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      */
-    public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext, String symbol,Method method) {
+    public static void registerCompareSymbolMethod(JsonSqlContext jsonSqlContext, String symbol,Method method,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return ;
         }
@@ -149,7 +153,7 @@ public class CompareSymbolParser {
         Class<?>[] parameterTypes = method.getParameterTypes();
 
         if(!checkCompareMethod(method)){
-            if (log.isDebugEnabled()) {
+            if (printErrorInfo && log.isDebugEnabled()) {
                 log.debug("比较运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
             }
             return;
