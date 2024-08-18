@@ -152,8 +152,8 @@ mvn clean install
   - 一个UDF函数有且仅有一个可变参数（除了宏参数变量），位置可以是参数列表中任意位置，但必须在宏参数变量之后。
   - 可变参数中List、Map类型支持注册参数泛型。
   - 注意：使用时，如果传递了可变参数，如果可变参数后面还有参数，则必传，如果没有传可变参数，则后面的参数可以不传。
-  - 支持命令行执行
-  - 支持shell终端执行
+- 支持命令行执行
+- 支持shell终端执行
 
 # 支持的逻辑比较符
 
@@ -869,13 +869,13 @@ public class SimpleDemo {
       registerDemo(jsonSqlContext);
       // 显式注册比较运算符
       try {
-            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class),true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
       // 显式注册计算运算符
         try {
-            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH);
+            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH,true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
