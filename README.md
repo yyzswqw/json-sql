@@ -1,43 +1,14 @@
 # json-sql
 这是一个写SQL操作JSON数据的项目。旨在简化JSON的增删改查。
 
-# 提供的功能
-
-- 表概念，一条JSON即为一张表
-- 支持SQL statement
-  - select ，查询字段
-  - update ，更新字段(增加、删除、修改、重命名）
-  - delete，删除字段
-  - drop tableName，删除注册的表
-  - create table tableName select ，根据select 结果，注册表
-- 支持JSON Path语法，支持简化的jsonPath,如name.firstName：表示name下有一个属性是firstName，复杂jsonPath使用函数jsonPath('path')引用
-- JSON字段的增加
-- JSON字段的删除
-- JSON字段的修改
-- 支持加减乘除取余四则运算
-- 自定义高优先级计算运算符，与乘除同优先级
-- 自定义低优先级计算运算符，与加减同优先级
-- 支持逻辑比较符
-- 支持注册自定义逻辑比较符函数
-- 支持SQL函数
-- 支持子查询关联查询其他表
-  - select * from t1 where a in (select b from t2 where 1=1 as b)，select子句返回的是json串，需要后面使用as表达式说明使用的字段名称
-- 内置语法函数
-- 自定义UDF函数，注册后，使用时需要加上$前缀
-- 自定义UDF函数
-  - 支持宏变量,宏变量需要在所有参数的最前面定义。
-  - 支持可变参数，数组、集合（Collection类及其子类）或者Map类型（Map类及其子类,需要参数两两匹配，即key,value对）。
-  - 一个UDF函数有且仅有一个可变参数（除了宏参数变量），位置可以是参数列表中任意位置，但必须在宏参数变量之后。
-  - 可变参数中List、Map类型支持注册参数泛型。
-  - 注意：使用时，如果传递了可变参数，如果可变参数后面还有参数，则必传，如果没有传可变参数，则后面的参数可以不传。
-
 # 快速体验
-1、下载程序包
+下载程序包
 ```
 wget https://github.com/yyzswqw/json-sql/releases/download/untagged-587b2c5ba762e9f8cd5f/json-sql-1.0-SNAPSHOT.jar
 ```
 下载完成后，将得到json-sql-1.0.0.jar
-2、准备json原始数据文件，假设文件名为：temp.json,内容如下：
+## 命令行执行快速体验
+1、准备json原始数据文件，假设文件名为：temp.json,内容如下：
 ```json
 [
     {
@@ -69,21 +40,21 @@ wget https://github.com/yyzswqw/json-sql/releases/download/untagged-587b2c5ba762
     }
 ]
 ```
-执行
+2、执行如下命令，可得到工具支持的参数
 ```shell
 java -classpath json-sql-1.0.0.jar json.tool.SqlTool -h
 ```
-可得到工具支持的参数
-执行
+
+3、执行如下命令，将得到一个result.txt文件
 ```shell
 java -classpath json-sql-1.0.0.jar json.tool.SqlTool -t aTable -f ./temp.json --sql "select jsonPath('$.[0].event_job_status') as eventJobStatus,jsonPath('$.[0].log_path') from aa" --format csv --outputFile ./result.txt
 ```
-将得到一个result.txt文件，内容如下：
+内容如下：
 ```csv
 eventJobStatus,_c0
 RUNNING,"{""a"":""8d1b0220-049e-4d03-b101-e845444980e7.log"",""b"":111}"
 ```
-同时，支持sql从文件中读取，可执行多个sql,以最后一个sql的结果输出
+4、同时，支持sql从文件中读取，可执行多个sql,以最后一个sql的结果输出
 假设sql文件名为：sql.txt,内容如下：
 ``` txt
 select $registerTable('bTable','select 1 as a,jsonPath("$.[0].event_job_status") as status from aTable') from dd;
@@ -94,16 +65,96 @@ select $dumpBySql('/aa.txt','select jsonPath("$.[0]"),1 as v from aa'),$dumpAsCs
 
 select 123 as dd,* from bTable
 ```
-执行：
+5、执行如下命令，将得到result.txt（可传入--no_header参数，不输出表头）
 ```shell
 java -classpath json-sql-1.0.0.jar json.tool.SqlTool -t aTable -f ./temp.json --sqlFile ./sql.txt --format csv --outputFile ./result.txt
 ```
-将得到result.txt（可传入--no_header参数，不输出表头）内容为：
+内容为：
 ```csv
 dd,a,status
 123,1,RUNNING
 ```
 同时将得到aa.txt和aa.csv文件
+## shell终端执行快速体验
+1、执行如下命令，进入终端
+```shell
+java -classpath json-sql-1.0.0.jar json.shell.Shell
+```
+输出
+```shell
+json-sql-shell:>
+```
+输入如下指令，将获取支持的命令，也可支持执行sql语句
+```shell
+help
+```
+输入如下指令，将注册一张名为aTable的表
+```shell
+json-sql-shell:> create table aTable select 1 as a,true as b ,"abc" as c, toJson('{"a":"a1"}') as d from  a
+```
+输入如下指令，查询aTable表
+```shell
+json-sql-shell:> select * from aTable
+```
+输出
+```json
+{"a":1,"b":true,"c":"abc","d":{"a":"a1"}}
+```
+输入如下指令，查询aTable表，并新增一个字段做计算
+```shell
+json-sql-shell:> select *,a+1 as newA from aTable
+```
+输出
+```json
+{"a":1,"b":true,"c":"abc","d":{"a":"a1"},"newA":2}
+```
+# 其他项目集成
+将源码包下载下来，执行
+```shell
+mvn clean install
+```
+将本项目打入本地依赖
+其他项目中，pom.xml中引入
+```xml
+<dependency>
+    <groupId>coco.wqw</groupId>
+    <artifactId>json-sql</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+# 项目介绍
+# 提供的功能
+
+- 表概念，一条JSON即为一张表
+- 支持SQL statement
+  - select ，查询字段
+  - update ，更新字段(增加、删除、修改、重命名）
+  - delete，删除字段
+  - drop tableName，删除注册的表
+  - create table tableName select ，根据select 结果，注册表
+- 支持JSON Path语法，支持简化的jsonPath,如name.firstName：表示name下有一个属性是firstName，复杂jsonPath使用函数jsonPath('path')引用
+- JSON字段的增加
+- JSON字段的删除
+- JSON字段的修改
+- 支持加减乘除取余四则运算
+- 自定义高优先级计算运算符，与乘除同优先级
+- 自定义低优先级计算运算符，与加减同优先级
+- 支持逻辑比较符
+- 支持注册自定义逻辑比较符函数
+- 支持SQL函数
+- 支持子查询关联查询其他表
+  - select * from t1 where a in (select b from t2 where 1=1 as b)，select子句返回的是json串，需要后面使用as表达式说明使用的字段名称
+- 内置语法函数
+- 自定义UDF函数，注册后，使用时需要加上$前缀
+- 自定义UDF函数
+  - 支持宏变量,宏变量需要在所有参数的最前面定义。
+  - 支持可变参数，数组、集合（Collection类及其子类）或者Map类型（Map类及其子类,需要参数两两匹配，即key,value对）。
+  - 一个UDF函数有且仅有一个可变参数（除了宏参数变量），位置可以是参数列表中任意位置，但必须在宏参数变量之后。
+  - 可变参数中List、Map类型支持注册参数泛型。
+  - 注意：使用时，如果传递了可变参数，如果可变参数后面还有参数，则必传，如果没有传可变参数，则后面的参数可以不传。
+  - 支持命令行执行
+  - 支持shell终端执行
+
 # 支持的逻辑比较符
 
 - `=  ` 等于
