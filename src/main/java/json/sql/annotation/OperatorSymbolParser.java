@@ -24,9 +24,10 @@ public class OperatorSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param nonAnnotationRegisterLevel 没有注解的方法如何注册优先级的策略
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreMethodName 需要忽略的方法名
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,String ... ignoreMethodName){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,boolean printErrorInfo,String ... ignoreMethodName){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<String> ignoreMethodNameSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreMethodName)){
@@ -43,9 +44,9 @@ public class OperatorSymbolParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerOperatorSymbolMethod(jsonSqlContext, method,nonAnnotationRegisterLevel);
+                registerOperatorSymbolMethod(jsonSqlContext, method,nonAnnotationRegisterLevel,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册计算运算符 函数失败! symbol : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册计算运算符 函数失败!",e);
                 }
@@ -59,9 +60,10 @@ public class OperatorSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param clazz class
      * @param nonAnnotationRegisterLevel 没有注解的方法如何注册优先级的策略
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      * @param ignoreMethod 需要忽略的方法
      */
-    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,Method ... ignoreMethod){
+    public static void classParser(JsonSqlContext jsonSqlContext,Class<?> clazz,CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,boolean printErrorInfo,Method ... ignoreMethod){
         List<Method> allPublicStaticMethodList = getAllPublicStaticMethod(clazz);
         Set<Method> ignoreMethodSet = new HashSet<>();
         if(ObjectUtil.isNotEmpty(ignoreMethod)){
@@ -78,9 +80,9 @@ public class OperatorSymbolParser {
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             try {
-                registerOperatorSymbolMethod(jsonSqlContext, method,nonAnnotationRegisterLevel);
+                registerOperatorSymbolMethod(jsonSqlContext, method,nonAnnotationRegisterLevel,printErrorInfo);
             }catch (Exception e){
-                if (log.isDebugEnabled()) {
+                if (printErrorInfo && log.isDebugEnabled()) {
                     log.debug("注册计算运算符 函数失败! methodName : {} ,class : {} ,method : {} ,parameterTypes : {}",symbol,clazz.getName(),method.getName(),parameterTypes);
                     log.debug("注册计算运算符 函数失败!",e);
                 }
@@ -93,8 +95,9 @@ public class OperatorSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param method method
      * @param nonAnnotationRegisterLevel 没有注解的方法如何注册优先级的策略
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      */
-    public static void registerOperatorSymbolMethod(JsonSqlContext jsonSqlContext, Method method, CalculateOperatorSymbolLevel nonAnnotationRegisterLevel) {
+    public static void registerOperatorSymbolMethod(JsonSqlContext jsonSqlContext, Method method, CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return ;
         }
@@ -107,7 +110,7 @@ public class OperatorSymbolParser {
         Class<?>[] parameterTypes = method.getParameterTypes();
 
         if(!checkOperatorMethod(method)){
-            if (log.isDebugEnabled()) {
+            if (printErrorInfo && log.isDebugEnabled()) {
                 log.debug("计算运算符 函数不符合规范! methodName : {} ,method : {} ,parameterTypes : {}", symbolTemp, method.getName(),parameterTypes);
             }
             return;
@@ -133,8 +136,9 @@ public class OperatorSymbolParser {
      * @param jsonSqlContext jsonSqlContext
      * @param symbol 运算符标识
      * @param method method
+     * @param printErrorInfo 是否打印错误日志，日志级别为debug
      */
-    public static void registerOperatorSymbolMethod(JsonSqlContext jsonSqlContext, String symbol, Method method, CalculateOperatorSymbolLevel nonAnnotationRegisterLevel) {
+    public static void registerOperatorSymbolMethod(JsonSqlContext jsonSqlContext, String symbol, Method method, CalculateOperatorSymbolLevel nonAnnotationRegisterLevel,boolean printErrorInfo) {
         if(ObjectUtil.isEmpty(method)){
             return ;
         }
@@ -149,7 +153,7 @@ public class OperatorSymbolParser {
         Class<?>[] parameterTypes = method.getParameterTypes();
 
         if(!checkOperatorMethod(method)){
-            if (log.isDebugEnabled()) {
+            if (printErrorInfo && log.isDebugEnabled()) {
                 log.debug("计算运算符 函数不符合规范! symbol : {} ,method : {} ,parameterTypes : {}", symbol, method.getName(),parameterTypes);
             }
             return;

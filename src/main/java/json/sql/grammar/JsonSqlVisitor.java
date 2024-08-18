@@ -1,8 +1,13 @@
 package json.sql.grammar;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.*;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
@@ -28,8 +33,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -98,7 +108,13 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
      */
     private static final TypeReference defaultMapTypeReference = new MapTypeReference(Object.class,Object.class);
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     // region ======================== api start ===================================
+
+    public ObjectMapper getObjectMapper(){
+        return objectMapper;
+    }
 
     /**
      * 判断是否存在表
@@ -187,6 +203,72 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
 
         parser.sql();
         return parserErrorListener.errors();
+    }
+
+    /**
+     * 执行sql
+     * @param sql sql
+     * @return 执行结果，为空则返回主表结果
+     */
+    public String sql(String sql){
+        json.sql.parse.SqlLexer lexer = new json.sql.parse.SqlLexer(CharStreams.fromString(sql));
+        json.sql.parse.SqlParser parser = new json.sql.parse.SqlParser(new CommonTokenStream(lexer));
+        ParserErrorListener parserErrorListener = new ParserErrorListener();
+        parser.addErrorListener(parserErrorListener);
+        lexer.addErrorListener(parserErrorListener);
+
+        // 删除默认的控制台打印的错误信息，使用自定义的错误监听器
+        List<? extends ANTLRErrorListener> errorListeners = parser.getErrorListeners();
+        int consoleErrorListenerIndex;
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < errorListeners.size(); i++) {
+                ANTLRErrorListener next = errorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                errorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
+        List<? extends ANTLRErrorListener> lexerErrorListeners = lexer.getErrorListeners();
+        do {
+            consoleErrorListenerIndex = -1;
+            for (int i = 0; i < lexerErrorListeners.size(); i++) {
+                ANTLRErrorListener next = lexerErrorListeners.get(i);
+                if(next instanceof ConsoleErrorListener){
+                    consoleErrorListenerIndex = i;
+                    break;
+                }
+            }
+            if(consoleErrorListenerIndex != -1){
+                lexerErrorListeners.remove(consoleErrorListenerIndex);
+            }
+        }while (consoleErrorListenerIndex != -1);
+
+        ParseTree tree = parser.sql();
+        if (parserErrorListener.hasError()) {
+            List<String> errors = parserErrorListener.errors();
+            String join = String.join("\n", errors);
+            throw new RuntimeException("parser errors : "+join);
+        }
+        return this.exec(tree);
+    }
+
+    /**
+     * 执行sql文件
+     * @param sqlFile sql文件
+     * @return 执行结果，为空则返回主表结果
+     */
+    public String sql(File sqlFile){
+        String sql = FileUtil.readUtf8String(sqlFile);
+        if(ObjectUtil.isEmpty(sql)){
+            throw new RuntimeException("sql file content is empty!");
+        }
+        return this.sql(sql);
     }
 
     /**
@@ -623,6 +705,181 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
             return 1;
         }
         return 0;
+    }
+
+    /**
+     * 将一个json格式的字段串转换为csv
+     * @param json json格式的字符串
+     * @param outputHeader 是否输出表头
+     * @return csv字符串
+     */
+    public String jsonToCsv(String json,boolean outputHeader) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(json);
+            return convertJsonToCsv(jsonNode,outputHeader);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 转换json为csv
+     * @param jsonNode jsonNode
+     * @param outputHeader 是否输出表头
+     * @return csv字符串
+     * @throws IOException IOException
+     */
+    public String convertJsonToCsv(JsonNode jsonNode, boolean outputHeader) throws IOException {
+        if(Objects.isNull(jsonNode)){
+            return "";
+        }
+        if(jsonNode instanceof NumericNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof TextNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof POJONode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof ValueNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof ArrayNode){
+            StringWriter stringWriter = new StringWriter();
+            CSVPrinter csvPrinter = null;
+
+            ArrayNode arrayNode = (ArrayNode)jsonNode;
+            JsonNode firstObject = arrayNode.get(0);
+            Iterator<Map.Entry<String, JsonNode>> fields = firstObject.fields();
+
+            // Extract headers
+            if(outputHeader){
+                List<String> headerList = new ArrayList<>();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> field = fields.next();
+                    String key = field.getKey();
+                    headerList.add(key);
+                }
+                csvPrinter = new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(headerList.toArray(new String[0])));
+            }else{
+                csvPrinter = new CSVPrinter(stringWriter, CSVFormat.DEFAULT);
+            }
+
+            // Extract rows
+            int size = arrayNode.size();
+            for (int i = 0; i < size; i++) {
+                JsonNode jsonObject = arrayNode.get(i);
+                fields = jsonObject.fields();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> field = fields.next();
+                    JsonNode value = field.getValue();
+                    if(value instanceof ObjectNode || value instanceof ArrayNode){
+                        String val = this.toJsonString(value);
+                        csvPrinter.print(val);
+                    }else{
+                        csvPrinter.print(value.asText());
+                    }
+                }
+                csvPrinter.println();
+            }
+            csvPrinter.close();
+            return stringWriter.toString();
+        }else if(jsonNode instanceof ObjectNode){
+            StringWriter stringWriter = new StringWriter();
+            CSVPrinter csvPrinter = null;
+
+            ObjectNode jsonObject = (ObjectNode)jsonNode;
+            Iterator<Map.Entry<String, JsonNode>> fields = jsonObject.fields();
+
+            // Extract headers
+            if(outputHeader){
+                List<String> headerList = new ArrayList<>();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> field = fields.next();
+                    String key = field.getKey();
+                    headerList.add(key);
+                }
+                csvPrinter = new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(headerList.toArray(new String[0])));
+            }else{
+                csvPrinter = new CSVPrinter(stringWriter, CSVFormat.DEFAULT);
+            }
+
+            fields = jsonObject.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                JsonNode value = field.getValue();
+                if(value instanceof ObjectNode || value instanceof ArrayNode){
+                    String val = this.toJsonString(value);
+                    csvPrinter.print(val);
+                }else{
+                    csvPrinter.print(value.asText());
+                }
+            }
+            csvPrinter.close();
+            return stringWriter.toString();
+        }
+        return jsonNode.asText();
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonContentFile json数据文件，只能有一条json,可以换行
+     */
+    public void registerTable(String tableName, File jsonContentFile) {
+        registerTable(tableName,jsonContentFile,null);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonContentFile json数据文件，只能有一条json,可以换行
+     * @param config 配置项
+     */
+    public void registerTable(String tableName, File jsonContentFile, Map<String,Object> config) {
+        String json = FileUtil.readUtf8String(jsonContentFile);
+        if(ObjectUtil.isEmpty(json)){
+            throw new RuntimeException("json file content is empty!");
+        }
+        registerTable(tableName,json,config);
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonObj 自定义对象
+     */
+    public void registerTable(String tableName,Object jsonObj) {
+        registerTable(tableName,jsonObj,null);
+    }
+
+    /**
+     * 将javaBean转换为json字符串
+     * @param javaBean 自定义对象
+     */
+    public String toJsonString(Object javaBean) {
+        String json = null;
+        try {
+            json = objectMapper.writeValueAsString(javaBean);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return json;
+    }
+
+    /**
+     * 注册表
+     * @param tableName 表名
+     * @param jsonObj 自定义对象
+     * @param config 配置项
+     */
+    public void registerTable(String tableName,Object jsonObj,Map<String,Object> config) {
+        if(ObjectUtil.hasEmpty(tableName,jsonObj)){
+            throw new RuntimeException("表名或者json 数据不能为空");
+        }
+        TableContext tableContext = this.tableDataMap.get(tableName);
+        if(ObjectUtil.isNotEmpty(tableContext)){
+            throw new RuntimeException("table is exist");
+        }
+        String json = toJsonString(jsonObj);
+        registerTable(tableName,json,config);
     }
 
     /**
@@ -1795,7 +2052,7 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
         }
         if(!condition){
             this.tableNameStack.pop();
-            return null;
+            return "{}";
         }
         Object v = visitSelectList(selectListContext);
         this.tableNameStack.pop();

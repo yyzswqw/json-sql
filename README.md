@@ -31,8 +31,79 @@
   - 可变参数中List、Map类型支持注册参数泛型。
   - 注意：使用时，如果传递了可变参数，如果可变参数后面还有参数，则必传，如果没有传可变参数，则后面的参数可以不传。
 
+# 快速体验
+1、下载程序包
+```
+wget https://github.com/yyzswqw/json-sql/releases/download/untagged-587b2c5ba762e9f8cd5f/json-sql-1.0-SNAPSHOT.jar
+```
+下载完成后，将得到json-sql-1.0.0.jar
+2、准备json原始数据文件，假设文件名为：temp.json,内容如下：
+```json
+[
+    {
+        "id": 16,
+        "session_id": 32,
+        "job_name": null,
+        "scheduler_job_record_id": null,
+        "import_path": "/event_15/events/",
+        "parameters": "param",
+        "start_time": "2024-07-17 11:39:57",
+        "end_time": "2024-07-17 11:39:57",
+        "counter_info": null,
+        "log_path": {
+    		   "a":"8d1b0220-049e-4d03-b101-e845444980e7.log",
+    		   "b":111
+		  },
+        "event_job_id": "job_1718102151695_19215",
+        "profile_job_id": null,
+        "item_job_id": null,
+        "command_job_id": null,
+        "remapping_job_id": null,
+        "event_job_status": "RUNNING",
+        "profile_job_status": null,
+        "item_job_status": null,
+        "command_job_status": null,
+        "remapping_job_status": null,
+        "event_data_load_status": null,
+        "project_name": "production"
+    }
+]
+```
+执行
+```shell
+java -classpath json-sql-1.0.0.jar json.tool.SqlTool -h
+```
+可得到工具支持的参数
+执行
+```shell
+java -classpath json-sql-1.0.0.jar json.tool.SqlTool -t aTable -f ./temp.json --sql "select jsonPath('$.[0].event_job_status') as eventJobStatus,jsonPath('$.[0].log_path') from aa" --format csv --outputFile ./result.txt
+```
+将得到一个result.txt文件，内容如下：
+```csv
+eventJobStatus,_c0
+RUNNING,"{""a"":""8d1b0220-049e-4d03-b101-e845444980e7.log"",""b"":111}"
+```
+同时，支持sql从文件中读取，可执行多个sql,以最后一个sql的结果输出
+假设sql文件名为：sql.txt,内容如下：
+``` txt
+select $registerTable('bTable','select 1 as a,jsonPath("$.[0].event_job_status") as status from aTable') from dd;
 
+select jsonPath('$.[0].event_job_status') as eventJobStatus,jsonPath('$.[0].log_path') from aTable;
 
+select $dumpBySql('/aa.txt','select jsonPath("$.[0]"),1 as v from aa'),$dumpAsCsvBySql('/aa.csv','select jsonPath("$.[0]"),1 as v from aTable') from ssss;
+
+select 123 as dd,* from bTable
+```
+执行：
+```shell
+java -classpath json-sql-1.0.0.jar json.tool.SqlTool -t aTable -f ./temp.json --sqlFile ./sql.txt --format csv --outputFile ./result.txt
+```
+将得到result.txt（可传入--no_header参数，不输出表头）内容为：
+```csv
+dd,a,status
+123,1,RUNNING
+```
+同时将得到aa.txt和aa.csv文件
 # 支持的逻辑比较符
 
 - `=  ` 等于
@@ -174,6 +245,16 @@ concat
 		dataList
 			List<String>   	待拼接数据列表
 
+dump
+	desc: 将表中数据导出到文件
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		tableName
+			String         	表名
+		filePath
+			String         	导出文件路径
+
 dateOfYear
 	desc: 获取日期的年份部分
 	Source By Class : unknown
@@ -214,6 +295,18 @@ jsonSize
 		objReturnSize
 			Boolean        	如果是json object对象，是否返回一级 key 的数量，默认false
 
+dumpAsCsvBySql
+	desc: 将查询语句的结果导出为csv
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		filePath
+			String         	导出文件路径
+		sql
+			String         	查询sql
+		outputHeader
+			Boolean        	是否输出表头
+
 concatPreSuffix
 	desc: 拼接一个前缀和后缀，后缀可会空
 	Source By Class : unknown
@@ -225,6 +318,28 @@ concatPreSuffix
 			String         	前缀
 		suffix
 			String         	后缀,可为空
+
+dumpAsCsvBySqlFile
+	desc: 将查询sql文件的结果导出为csv
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		sqlFile
+			String         	查询sql文件
+		filePath
+			String         	导出文件路径
+		outputHeader
+			Boolean        	是否输出表头
+
+dumpBySql
+	desc: 将查询语句的结果导出到文件
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		filePath
+			String         	导出文件路径
+		sql
+			String         	select sql语句
 
 subString
 	desc: 截取字符串一部分
@@ -258,15 +373,17 @@ del
 		jsonPaths
 			String[]       	jsonPath列表
 
-toDataType
-	desc: 将数据转换为指定的java类型
+dumpAsCsv
+	desc: 将表中数据导出为csv
 	Source By Class : unknown
-	Returns: Object
+	Returns: boolean
 	Args:
-		classFullName
-			String         	待转换的java类型的全限定名（需要在当前class path下存在）
-		data
-			Object[]       	待转换数据
+		tableName
+			String         	表名
+		filePath
+			String         	导出文件路径
+		outputHeader
+			Boolean        	是否输出表头
 
 showTableNames
 	desc: 获取满足正则表达式的表名,没有条件则获取所有表名
@@ -332,6 +449,18 @@ values
 		ignoreKeys
 			String[]       	需要忽略key的列表
 
+registerTableFromFilePath
+	desc: 将文件中的sql查询语句的结果注册为一张表
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		tableName
+			String         	表名
+		filePath
+			String         	select sql语句文件路径
+		config
+			Map<String,Object>	表的配置信息
+
 dateOfHour
 	desc: 获取日期的日部分
 	Source By Class : unknown
@@ -341,6 +470,16 @@ dateOfHour
 			Object         	可转换为java.util.Date的数据
 		is24HourClock
 			Boolean        	是否24小时制
+
+toDataType
+	desc: 将数据转换为指定的java类型
+	Source By Class : unknown
+	Returns: Object
+	Args:
+		classFullName
+			String         	待转换的java类型的全限定名（需要在当前class path下存在）
+		data
+			Object[]       	待转换数据
 
 keys
 	desc: 获取jsonPath下的所有的key，直到递归到最大层级，jsonPath为空则默认为根路径
@@ -363,7 +502,7 @@ format
 			Boolean        	是否替换原始的值，默认会替换，不替换时仅返回格式化后的jsonPath的值
 		ignoreKeys
 			String[]       	需要忽略key的列表
-			
+
 toDataMap
 	desc: 将数据转换为java map类型
 	Source By Class : unknown
@@ -371,7 +510,7 @@ toDataMap
 	Args:
 		data
 			Map<Object,Object>	待转换数据
-			
+
 toDataMapWithStrKey
 	desc: 将数据转换为java map类型,并将key转为string
 	Source By Class : unknown
@@ -530,6 +669,18 @@ lowerCase
 		data
 			String         	待转换数据
 
+registerTable
+	desc: 将查询语句的结果注册为一张表
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		tableName
+			String         	表名
+		sql
+			String         	select sql语句
+		config
+			Map<String,Object>	表的配置信息
+
 showUdf
 	desc: 获取满足正则表达式的udf描述信息,没有条件则获取所有udf
 	Source By Class : unknown
@@ -537,6 +688,16 @@ showUdf
 	Args:
 		patternList
 			List<String>   	正则表达式列表
+
+dumpBySqlFile
+	desc: 将文件中的查询语句的结果导出到文件
+	Source By Class : unknown
+	Returns: boolean
+	Args:
+		filePath
+			String         	导出文件路径
+		sqlFile
+			String         	select sql语句文件路径
 
 dateOfDay
 	desc: 获取日期的日部分

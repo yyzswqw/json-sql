@@ -129,16 +129,16 @@ public class SimpleDemo {
     }
 
     private static void registerCustomMethod( JsonSqlContext jsonSqlContext) {
-        UdfParser.classParser(jsonSqlContext,UdfDemo.class, false,(String[])null);
+        UdfParser.classParser(jsonSqlContext,UdfDemo.class, false,false,(String[])null);
         // 显式注册比较运算符
         try {
-            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class));
+            CompareSymbolParser.registerCompareSymbolMethod(jsonSqlContext, ">q",CustomCompareSymbolDemo.class.getMethod("a",int.class,List.class),false);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
         // 显式注册计算运算符
         try {
-            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH);
+            OperatorSymbolParser.registerOperatorSymbolMethod(jsonSqlContext,"sizeAdd", CustomCalculateOperatorSymbolDemo.class.getMethod("a",List.class,List.class), CalculateOperatorSymbolLevel.BOTH,false);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
