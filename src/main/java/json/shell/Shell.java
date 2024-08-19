@@ -9,6 +9,7 @@ import json.shell.entity.CommandDescInfo;
 import json.shell.utils.CommandCallUtil;
 import json.sql.JsonSqlContext;
 import json.sql.annotation.PackageAnnotationScanner;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.jline.builtins.Completers;
 import org.jline.reader.*;
@@ -24,81 +25,106 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
+@Data
 public class Shell {
 
-    private static Map<String, CommandDescInfo> commandDescInfoMap = new HashMap<>();
+    private Map<String, CommandDescInfo> commandDescInfoMap = new HashMap<>();
 
-    private static Terminal terminal = null;
+    private Terminal terminal = null;
 
-    private static final String prompt = "json-sql-shell:> ";
+    private String prompt = "json-sql-shell:> ";
 
-    private static JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
+    private LineReader lineReader = null;;
+
+    private List<CommandDescInfo> commandDescInfoList = new ArrayList<>();
+
+    private JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
+
+    public Shell(){
+        initCommand();
+    }
+
+    public void initCommand(){
+        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CommandClass.class);
+        Set<String> commandNameSet = new HashSet<>();
+        for (Class<?> aClass : classes) {
+            List<CommandDescInfo> commandDescInfos = CommandParser.classParser(aClass, true, (Method[]) null);
+            if(ObjectUtil.isNotEmpty(commandDescInfos)){
+                for (CommandDescInfo commandDescInfo : commandDescInfos) {
+                    String name = commandDescInfo.getName();
+                    if (commandNameSet.contains(name)) {
+                        throw new RuntimeException("存在同名 commandName : " + name);
+                    }
+                    commandNameSet.add(name);
+                    commandDescInfoList.add(commandDescInfo);
+                }
+            }
+        }
+//        创建行读取器
+        Parser parser = new DefaultParser();
+        LineReaderBuilder terminalTemp = LineReaderBuilder.builder().terminal(terminal);
+        if(ObjectUtil.isNotEmpty(commandDescInfoList)){
+            terminalTemp.completer(this.getHelpCompleter(commandDescInfoList));
+            commandDescInfoMap = commandDescInfoList.stream()
+                    .collect(Collectors.toMap(CommandDescInfo::getName, commandDescInfo -> commandDescInfo));
+        }
+        lineReader = terminalTemp.parser(parser).build();
+    }
+
+    public void start(){
+        String line;
+        while ((line = lineReader.readLine(this.getPrompt())) != null) {
+            String command = line.trim();
+            if (command.isEmpty()) {
+                continue;
+            } else if(SqlCommand.isSql(command)) {
+                String result = this.getJsonSqlContext().sql(command);
+                Console.log(result);
+            }else {
+                try {
+                    this.processCommand(lineReader,line);
+                }catch (Exception e){
+                    Console.log(e.getMessage());
+                }
+            }
+        }
+    }
+
+    public void close(){
+        if(ObjectUtil.isNotEmpty(terminal)){
+            try {
+                terminal.close();
+            } catch (IOException e) {
+                log.error("close terminal error!",e);
+            }
+        }
+    }
 
     public static void main(String[] args) {
         try {
-            Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CommandClass.class);
-            List<CommandDescInfo> commandDescInfoList = new ArrayList<>();
-            Set<String> commandNameSet = new HashSet<>();
-            for (Class<?> aClass : classes) {
-                List<CommandDescInfo> commandDescInfos = CommandParser.classParser(aClass, true, (Method[]) null);
-                if(ObjectUtil.isNotEmpty(commandDescInfos)){
-                    for (CommandDescInfo commandDescInfo : commandDescInfos) {
-                        String name = commandDescInfo.getName();
-                        if (commandNameSet.contains(name)) {
-                            throw new RuntimeException("存在同名 commandName : " + name);
-                        }
-                        commandNameSet.add(name);
-                        commandDescInfoList.add(commandDescInfo);
-                    }
-                }
-            }
+            Shell shell = new Shell();
+            // 创建终端
+            Terminal terminal = TerminalBuilder.builder().system(true).build();
+            shell.setTerminal(terminal);
 
-            ShellContext.cur().setJsonSqlContext(jsonSqlContext);
-            // 创建终端和行读取器
-            terminal = TerminalBuilder.builder().system(true).build();
+            ShellContext.cur().setJsonSqlContext(shell.getJsonSqlContext());
             ShellContext.cur().setTerminal(terminal);
-            Parser parser = new DefaultParser();
-
-            LineReader lineReader = null;
-            LineReaderBuilder terminalTemp = LineReaderBuilder.builder().terminal(terminal);
-            if(ObjectUtil.isNotEmpty(commandDescInfoList)){
-                terminalTemp.completer(Shell.getHelpCompleter(commandDescInfoList));
-                commandDescInfoMap = commandDescInfoList.stream()
-                        .collect(Collectors.toMap(CommandDescInfo::getName, commandDescInfo -> commandDescInfo));
-            }
-            ShellContext.cur().setCommandDescInfoMap(commandDescInfoMap);
+            ShellContext.cur().setCommandDescInfoMap(shell.getCommandDescInfoMap());
             ShellContext.cur().setDefaultSavePath("."+ FileUtil.FILE_SEPARATOR+"data");
             ShellContext.cur().setDefaultTempDataPath("."+ FileUtil.FILE_SEPARATOR+"temp");
-            lineReader = terminalTemp.parser(parser).build();
-
-            String line;
-            while ((line = lineReader.readLine(prompt)) != null) {
-                String command = line.trim();
-                if (command.isEmpty()) {
-                    continue;
-                } else if(SqlCommand.isSql(command)) {
-                    String result = jsonSqlContext.sql(command);
-                    Console.log(result);
-                }else {
-                    try {
-                        processCommand(lineReader,line);
-                    }catch (Exception e){
-                        Console.log(e.getMessage());
-                    }
-                }
-            }
-            terminal.close();
+            shell.start();
+            shell.close();
         } catch (IOException e) {
             log.error("Error: ", e);
         }
     }
 
-    private static void processCommand(LineReader lineReader,String command) {
+    private void processCommand(LineReader lineReader,String command) {
         List<String> commandAndArgsList = parseCommand(lineReader);
         if(ObjectUtil.isEmpty(commandAndArgsList) || commandAndArgsList.size() < 1){
             throw new RuntimeException("命令不正确. command : "+command);
         }
-        CommandDescInfo commandDescInfo = commandDescInfoMap.get(commandAndArgsList.get(0));
+        CommandDescInfo commandDescInfo = this.getCommandDescInfoMap().get(commandAndArgsList.get(0));
         if(ObjectUtil.isEmpty(commandDescInfo)){
             List<String> errors = SqlCommand.sqlHasError(command);
             if(ObjectUtil.isNotEmpty(errors)){
@@ -144,7 +170,7 @@ public class Shell {
     }
 
 
-    private static Completer getHelpCompleter(List<CommandDescInfo> commandDescInfoList) {
+    private Completer getHelpCompleter(List<CommandDescInfo> commandDescInfoList) {
         if(ObjectUtil.isEmpty(commandDescInfoList)){
             return null;
         }
