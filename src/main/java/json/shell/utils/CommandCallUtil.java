@@ -2,6 +2,7 @@ package json.shell.utils;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
+import json.shell.ShellContext;
 import json.shell.entity.CommandDescInfo;
 import json.shell.entity.CommandParamDescInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ public class CommandCallUtil {
 
     private CommandCallUtil(){}
 
-    public static <T> T callCommand(CommandDescInfo commandDescInfo, Object ... args){
+    public static <T> T callCommand(ShellContext shellContext,CommandDescInfo commandDescInfo, Object ... args){
         if(ObjectUtil.isEmpty(commandDescInfo)){
             return null;
         }
@@ -31,6 +32,7 @@ public class CommandCallUtil {
         List<? extends Class<?>> argsTypeClasses = commandDescInfo.getCommandParamDescInfoList().stream().map(CommandParamDescInfo::getArgsType).collect(Collectors.toList());
         Object result = null;
         List<Object> innerArgsList = new ArrayList<>();
+        innerArgsList.add(shellContext);
         try {
             if(argsTypeClasses.isEmpty()){
                 result = method.invoke(instance);

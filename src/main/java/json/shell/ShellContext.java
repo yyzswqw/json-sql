@@ -2,9 +2,9 @@ package json.shell;
 
 import cn.hutool.core.util.ObjectUtil;
 import json.shell.entity.CommandDescInfo;
+import json.shell.utils.ConsoleLog;
 import json.sql.JsonSqlContext;
 import lombok.Data;
-import org.jline.terminal.Terminal;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -12,9 +12,7 @@ import java.util.Map;
 @Data
 public class ShellContext implements Serializable {
 
-    private static ShellContext shellContext = new ShellContext();
-
-    private Terminal terminal;
+    private ConsoleLog consoleLog;
 
     private JsonSqlContext jsonSqlContext;
 
@@ -24,11 +22,7 @@ public class ShellContext implements Serializable {
 
     private String defaultTempDataPath;
 
-    private ShellContext(){}
-
-    public static ShellContext cur(){
-        return shellContext;
-    }
+    public ShellContext(){}
 
     public CommandDescInfo getCommandDescInfo(String commandName){
         Map<String, CommandDescInfo> commandDescInfoMap1 = getCommandDescInfoMap();
