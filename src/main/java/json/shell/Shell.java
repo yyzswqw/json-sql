@@ -217,7 +217,11 @@ public class Shell {
             }
             String res = "command not exist. command : " + commandAndArgsList.get(0);
             this.consoleLog.error(res);
-            return res;
+            if(ObjectUtil.isNotEmpty(errors)){
+                return res + "\n" + String.join("\n", errors);
+            }else{
+                return res;
+            }
         }
         Object[] args = new Object[commandAndArgsList.size() - 1];
         for (int i = 1; i < commandAndArgsList.size(); i++) {
