@@ -24,7 +24,8 @@ public class DDLCommand {
     public static final Map<String,String> dataSetTablePathMap = new HashMap<>();
 
     @CommandMethod(name = {"addDataSet"},desc = "添加json数据集文件，每个文件中一行数据为一条json")
-    public String addDataSet(@CommandParam(desc = "保存路径,为空时将保存到原文件中")String path){
+    public String addDataSet(ShellContext shellContext,
+                             @CommandParam(desc = "保存路径,为空时将保存到原文件中")String path){
         if(!FileUtil.exist(path)){
             throw new RuntimeException("path 不存在");
         }
@@ -32,7 +33,7 @@ public class DDLCommand {
         File file = new File(path);
         if (FileUtil.isFile(file)) {
             String absolutePath = FileUtil.getAbsolutePath(file);
-            String fullTableName = getFullTableName(absolutePath);
+            String fullTableName = getFullTableName(shellContext,absolutePath);
             dataSetTablePathMap.put(fullTableName, path);
             dataSet.put(path, fullTableName);
             size+=1;
@@ -43,7 +44,7 @@ public class DDLCommand {
                 if(ObjectUtil.isEmpty(extName) || (!"txt".equalsIgnoreCase(extName) && !"json".equalsIgnoreCase(extName))){
                     continue;
                 }
-                String fullTableName = getFullTableName(f.getAbsolutePath());
+                String fullTableName = getFullTableName(shellContext,f.getAbsolutePath());
                 dataSetTablePathMap.put(fullTableName, f.getAbsolutePath());
                 dataSet.put(f.getAbsolutePath(), fullTableName);
                 size+=1;
@@ -53,7 +54,8 @@ public class DDLCommand {
     }
 
     @CommandMethodIgnore
-    public String getFullTableName(String path){
+    public String getFullTableName(ShellContext shellContext,
+                                   String path){
         String s = path.replaceAll(":", "_").replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll("\\.", "_");
         if(s.startsWith("_")){
             return s.substring(1);
@@ -62,7 +64,8 @@ public class DDLCommand {
     }
 
     @CommandMethod(name = {"save"},desc = "保存表数据")
-    public String save(@CommandParam(desc = "表名")String tableName,
+    public String save(ShellContext shellContext,
+                       @CommandParam(desc = "表名")String tableName,
                        @CommandParam(desc = "保存路径,为空时将保存到原文件中")String path){
         if(ObjectUtil.hasEmpty(tableName)){
             throw new RuntimeException("表名不能为空");
@@ -74,7 +77,7 @@ public class DDLCommand {
             path = tablePathMap.get(tableName);
         }
 
-        String table = ShellContext.cur().getJsonSqlContext().getTable(tableName);
+        String table = shellContext.getJsonSqlContext().getTable(tableName);
         if (FileUtil.isFile(path)) {
             File file = new File(path);
             FileUtil.writeUtf8String(table,file);
@@ -89,17 +92,19 @@ public class DDLCommand {
     }
 
     @CommandMethod(name = {"setConfig"},desc = "设置表的属性")
-    public void setConfig(@CommandParam(desc = "表名")String tableName,
+    public void setConfig(ShellContext shellContext,
+                          @CommandParam(desc = "表名")String tableName,
                           @CommandParam(desc = "key")String key,
                           @CommandParam(desc = "value")Object value){
         if(ObjectUtil.hasEmpty(tableName,key,value)){
             throw new RuntimeException("参数不能为空");
         }
-        ShellContext.cur().getJsonSqlContext().setTableConfig(tableName,key,value);
+        shellContext.getJsonSqlContext().setTableConfig(tableName,key,value);
     }
 
     @CommandMethod(name = {"createTable"},desc = "新增表")
-    public boolean createTable(@CommandParam(desc = "数据文件路径，包括文件名") String dataPath,
+    public boolean createTable(ShellContext shellContext,
+                               @CommandParam(desc = "数据文件路径，包括文件名") String dataPath,
                             @CommandParam(desc = "表名") String tableName){
         if(ObjectUtil.isEmpty(dataPath)){
             throw new RuntimeException("数据文件不能为空");
@@ -108,7 +113,7 @@ public class DDLCommand {
             throw new RuntimeException("数据文件不存在");
         }
         String data = FileUtil.readUtf8String(dataPath);
-        if (!ShellContext.cur().getJsonSqlContext().isJsonData(data)) {
+        if (!shellContext.getJsonSqlContext().isJsonData(data)) {
             throw new RuntimeException("数据不是json");
         }
         if (tablePathMap.containsKey(tableName)) {
@@ -117,7 +122,7 @@ public class DDLCommand {
         if(ObjectUtil.isEmpty(tableName)){
             tableName = FileUtil.mainName(dataPath);
         }
-        ShellContext.cur().getJsonSqlContext().registerTable(tableName,data);
+        shellContext.getJsonSqlContext().registerTable(tableName,data);
         tablePathMap.put(tableName,dataPath);
         return true;
     }

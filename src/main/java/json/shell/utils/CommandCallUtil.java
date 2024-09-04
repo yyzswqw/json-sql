@@ -2,6 +2,7 @@ package json.shell.utils;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
+import json.shell.ShellContext;
 import json.shell.entity.CommandDescInfo;
 import json.shell.entity.CommandParamDescInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ public class CommandCallUtil {
 
     private CommandCallUtil(){}
 
-    public static <T> T callCommand(CommandDescInfo commandDescInfo, Object ... args){
+    public static <T> T callCommand(ShellContext shellContext,CommandDescInfo commandDescInfo, Object ... args){
         if(ObjectUtil.isEmpty(commandDescInfo)){
             return null;
         }
@@ -31,9 +32,10 @@ public class CommandCallUtil {
         List<? extends Class<?>> argsTypeClasses = commandDescInfo.getCommandParamDescInfoList().stream().map(CommandParamDescInfo::getArgsType).collect(Collectors.toList());
         Object result = null;
         List<Object> innerArgsList = new ArrayList<>();
+        innerArgsList.add(shellContext);
         try {
             if(argsTypeClasses.isEmpty()){
-                result = method.invoke(instance);
+                result = method.invoke(instance,innerArgsList.toArray());
             }else{
                 int curArgsIndex = 0;
                 for (int i = 0; i < argsTypeClasses.size(); i++) {
@@ -65,7 +67,7 @@ public class CommandCallUtil {
                                     try {
                                         convert = Convert.convert(componentType,innerArg);
                                     }catch (Exception e){
-                                        e.printStackTrace();
+                                        log.error("convert args error!",e);
                                     }
                                     Array.set(arguments, j++, convert);
                                 }
@@ -80,7 +82,7 @@ public class CommandCallUtil {
                                 Class<?> keyClazz = Object.class;
                                 Class<?> valueClazz = Object.class;
                                 List<Class<?>> genericityTypeList = commandDescInfo.getCommandParamDescInfoList().get(i).getGenericityTypeList();
-                                if(ObjectUtil.isNotEmpty(genericityTypeList) && genericityTypeList.size() >= 1){
+                                if(ObjectUtil.isNotEmpty(genericityTypeList) && !genericityTypeList.isEmpty()){
                                     keyClazz = genericityTypeList.get(0);
                                 }
                                 if(ObjectUtil.isNotEmpty(genericityTypeList) && genericityTypeList.size() >= 2){
@@ -95,14 +97,14 @@ public class CommandCallUtil {
                                     try {
                                         innerArgKey = Convert.convert(keyClazz,innerArgKey);
                                     }catch (Exception e){
-                                        e.printStackTrace();
+                                        log.error("convert args error!",e);
                                     }
                                     if(j+i+1 < innerArgs.size()){
                                         innerArgValue = innerArgs.get(j+i+1);
                                         try {
                                             convert = Convert.convert(valueClazz,innerArgValue);
                                         }catch (Exception e){
-                                            e.printStackTrace();
+                                            log.error("convert args error!",e);
                                         }
                                     }
                                     if(ObjectUtil.isNotEmpty(innerArgKey)){
@@ -113,7 +115,7 @@ public class CommandCallUtil {
                                 try {
                                     convert = Convert.convert(aClass, temp);
                                 }catch (Exception e){
-                                    e.printStackTrace();
+                                    log.error("convert args error!",e);
                                 }
                                 innerArgsList.add(convert);
                                 curArgsIndex += j;
@@ -123,7 +125,7 @@ public class CommandCallUtil {
                                 List<Object> temp = new ArrayList<>();
                                 Class<?> valueClazz = Object.class;
                                 List<Class<?>> genericityTypeList = commandDescInfo.getCommandParamDescInfoList().get(i).getGenericityTypeList();
-                                if(ObjectUtil.isNotEmpty(genericityTypeList) && genericityTypeList.size() >= 1){
+                                if(ObjectUtil.isNotEmpty(genericityTypeList) && !genericityTypeList.isEmpty()){
                                     valueClazz = genericityTypeList.get(0);
                                 }
                                 int j = 0;
@@ -133,7 +135,7 @@ public class CommandCallUtil {
                                     try {
                                         convert = Convert.convert(valueClazz,innerArg);
                                     }catch (Exception e){
-                                        e.printStackTrace();
+                                        log.error("convert args error!",e);
                                     }
                                     temp.add(convert);
                                     j++;
@@ -142,7 +144,7 @@ public class CommandCallUtil {
                                 try {
                                     convert = Convert.convert(aClass, temp);
                                 }catch (Exception e){
-                                    e.printStackTrace();
+                                    log.error("convert args error!",e);
                                 }
                                 innerArgsList.add(convert);
                                 curArgsIndex += j;
@@ -155,7 +157,7 @@ public class CommandCallUtil {
                         try {
                             convert = Convert.convert(aClass,innerArg);
                         }catch (Exception e){
-                            e.printStackTrace();
+                            log.error("convert args error!",e);
                         }
                         innerArgsList.add(convert);
                         curArgsIndex++;

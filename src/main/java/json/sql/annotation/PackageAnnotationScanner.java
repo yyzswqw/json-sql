@@ -9,6 +9,7 @@ import org.reflections.util.ConfigurationBuilder;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.util.*;
 
 @Slf4j
@@ -31,9 +32,19 @@ public class PackageAnnotationScanner {
      * @return 指定注解的类
      */
     public static Set<Class<?>> scanClassesByAnnotationInClasspath(Class<? extends Annotation> annotationClass){
+        return scanClassesByAnnotationInUrls(annotationClass,ClasspathHelper.forJavaClassPath());
+    }
+
+    /**
+     * 扫描class Path下指定注解的类
+     * @param annotationClass 指定注解
+     * @param urls urls
+     * @return 指定注解的类
+     */
+    public static Set<Class<?>> scanClassesByAnnotationInUrls(Class<? extends Annotation> annotationClass,Collection<URL> urls){
         // 设置 Reflections 配置
         ConfigurationBuilder configuration = new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forJavaClassPath())
+                .setUrls(urls)
                 .setScanners(Scanners.SubTypes, Scanners.TypesAnnotated);
         // 创建 Reflections 实例
         Reflections reflections = new Reflections(configuration);
@@ -49,9 +60,18 @@ public class PackageAnnotationScanner {
      * @return 所有指定注解的公共静态（public static）方法
      */
     public static Set<Method> scanMethodByAnnotationInClasspath(Class<? extends Annotation> annotationClass){
+        return scanMethodByAnnotationInUrls(annotationClass,ClasspathHelper.forJavaClassPath());
+    }
+
+    /**
+     * 扫描 classpath下所有带有指定注解的公共静态（public static）方法
+     * @param annotationClass 指定注解
+     * @return 所有指定注解的公共静态（public static）方法
+     */
+    public static Set<Method> scanMethodByAnnotationInUrls(Class<? extends Annotation> annotationClass,Collection<URL> urls){
         // 设置 Reflections 配置
         ConfigurationBuilder configuration = new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forJavaClassPath())
+                .setUrls(urls)
                 .setScanners( Scanners.MethodsAnnotated);
         // 创建 Reflections 实例
         Reflections reflections = new Reflections(configuration);

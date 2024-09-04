@@ -20,27 +20,30 @@ import java.util.Set;
 public class SqlCommand {
 
     @CommandMethodIgnore
-    public static boolean isSql(String sql){
-        return ShellContext.cur().getJsonSqlContext().isSql(sql);
+    public static boolean isSql(ShellContext shellContext,
+                                String sql){
+        return shellContext.getJsonSqlContext().isSql(sql);
     }
 
     @CommandMethodIgnore
-    public static List<String> sqlHasError(String sql){
-        return ShellContext.cur().getJsonSqlContext().getSqlError(sql);
+    public static List<String> sqlHasError(ShellContext shellContext,
+                                           String sql){
+        return shellContext.getJsonSqlContext().getSqlError(sql);
     }
 
     @CommandMethod(name = {"dataSetSql"},desc = "执行数据集的sql语句")
-    public Boolean dataSetSql(@CommandParam(desc = "需要执行的sql,多个以;分割") String sql, @CommandParam(desc = "存放结果的目录") String tempDir,
+    public Boolean dataSetSql(ShellContext shellContext,
+                              @CommandParam(desc = "需要执行的sql,多个以;分割") String sql, @CommandParam(desc = "存放结果的目录") String tempDir,
                               @CommandParam(desc = "是否将临时目录下的结果文件替换原数据") Boolean removeCurData){
         if(ObjectUtil.isEmpty(tempDir)){
-            tempDir = ShellContext.cur().getDefaultTempDataPath();
+            tempDir = shellContext.getDefaultTempDataPath();
             File file = new File(tempDir);
             Console.log("default tmpDir is : {}",file.getAbsolutePath());
         }
         if(!FileUtil.exist(tempDir)){
             FileUtil.mkdir(tempDir);
         }
-        JsonSqlContext jsonSqlContext = ShellContext.cur().getJsonSqlContext();
+        JsonSqlContext jsonSqlContext = shellContext.getJsonSqlContext();
         Set<Map.Entry<String, String>> entries = DDLCommand.dataSet.entrySet();
         String finalTempDir = tempDir;
         for (Map.Entry<String, String> entry : entries) {
@@ -73,12 +76,13 @@ public class SqlCommand {
     }
 
     @CommandMethod(name = {"sql"},desc = "执行sql语句")
-    public String sql(@CommandParam(desc = "需要执行的sql,多个以;分割") String sql){
-        List<String> errors = sqlHasError(sql);
+    public String sql(ShellContext shellContext,
+                      @CommandParam(desc = "需要执行的sql,多个以;分割") String sql){
+        List<String> errors = sqlHasError(shellContext,sql);
         if(!errors.isEmpty()){
             throw new RuntimeException(String.join("\n",errors));
         }
-        return ShellContext.cur().getJsonSqlContext().sql(sql);
+        return shellContext.getJsonSqlContext().sql(sql);
     }
 
 }

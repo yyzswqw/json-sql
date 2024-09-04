@@ -2,6 +2,7 @@ package json.shell.annotation;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
+import json.shell.ShellContext;
 import json.shell.entity.CommandDescInfo;
 import json.shell.entity.CommandParamDescInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -166,8 +167,16 @@ public class CommandParser {
         }
         Class<?>[] parameterTypes = method.getParameterTypes();
         Parameter[] parameters = method.getParameters();
+        if(ObjectUtil.isEmpty(parameters) || parameters.length < 1){
+            throw new RuntimeException("command : " + commandNames + " must has one parameter ["+ ShellContext.class.getName() +"]");
+        }
+        Class<?> shellContextParameterType = parameterTypes[0];
+        if( shellContextParameterType != ShellContext.class){
+            throw new RuntimeException("command : " + commandNames + " first parameter is not ["+ ShellContext.class.getName() +"]");
+        }
+
         Type[] genericParameterTypes = method.getGenericParameterTypes();
-        for (int i = 0; i < parameters.length; i++) {
+        for (int i = 1; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
             Class<?> parameterType = parameterTypes[i];
             String paramName = parameter.getName();
