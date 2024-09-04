@@ -22,9 +22,9 @@ wget https://github.com/yyzswqw/json-sql/releases/download/untagged-587b2c5ba762
         "end_time": "2024-07-17 11:39:57",
         "counter_info": null,
         "log_path": {
-    		   "a":"8d1b0220-049e-4d03-b101-e845444980e7.log",
-    		   "b":111
-		  },
+           "a":"8d1b0220-049e-4d03-b101-e845444980e7.log",
+           "b":111
+        },
         "event_job_id": "job_1718102151695_19215",
         "profile_job_id": null,
         "item_job_id": null,
@@ -108,6 +108,24 @@ json-sql-shell:> select *,a+1 as newA from aTable
 ```json
 {"a":1,"b":true,"c":"abc","d":{"a":"a1"},"newA":2}
 ```
+
+## 其他项目内嵌终端模式
+```java
+public static void main(String[] args) {
+
+    Shell shell = new Shell();
+    // 关闭终端输出模式，通过接收返回值，自行打印输出结果
+    shell.setTerminalOutPut(false);
+    shell.init();
+    shell.initFinish();
+    String next = new Scanner(System.in).nextLine();
+    Object result = shell.startCommand(next);
+    if(ObjectUtil.isNotEmpty(result)){
+        System.out.println(result.toString());
+    }
+    shell.close();
+}
+```
 # 其他项目集成
 将源码包下载下来，执行
 ```shell
@@ -122,6 +140,7 @@ mvn clean install
     <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
+
 # 项目介绍
 # 提供的功能
 
