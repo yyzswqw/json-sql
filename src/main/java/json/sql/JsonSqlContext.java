@@ -2,8 +2,6 @@ package json.sql;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.ObjectUtil;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.*;
 import json.sql.entity.UdfFunctionDescInfo;
 import json.sql.enums.MacroEnum;
 import json.sql.grammar.JsonSqlVisitor;
@@ -20,6 +18,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.*;
 
 @Slf4j
@@ -75,8 +74,42 @@ public class JsonSqlContext {
         this.jsonSqlVisitor.registerHighOperatorSymbolFunction(symbol,method,argsTypes);
     }
 
+    /**
+     * 批量注册注册自定义计算运算符和比较运算符和udf函数
+     * @param pathName 扫描的路径全局唯一名称
+     * @param urls urls
+     */
+    public void registerCalculateOperatorAndCompareSymbolAndUdfFunction(String pathName,Collection<URL> urls) {
+        registerFunction(pathName, urls);
+        registerCalculateOperatorFunction(pathName, urls);
+        registerCompareSymbolFunction(pathName, urls);
+    }
+
+    /**
+     * 批量注册自定义运算符
+     * @param pathName 扫描的路径全局唯一名称
+     * @param urls urls
+     */
+    public void registerCalculateOperatorFunction(String pathName,Collection<URL> urls) {
+        CustomMethodFactory.registerCalculateOperatorSymbolMethod(this,pathName,urls);
+    }
+
+    /**
+     * 注册自定义比较运算符
+     * @param symbol 比较运算符
+     * @param method 实现方法
+     */
     public void registerCompareSymbolFunction(String symbol, Method method) {
         this.jsonSqlVisitor.registerCompareSymbolFunction(symbol,method);
+    }
+
+    /**
+     * 批量注册自定义比较运算符
+     * @param pathName 扫描的路径全局唯一名称
+     * @param urls urls
+     */
+    public void registerCompareSymbolFunction(String pathName,Collection<URL> urls){
+        CustomMethodFactory.registerCompareSymbolMethod(this,pathName,urls);
     }
     /**
      * 注册自定义运算符函数
@@ -102,9 +135,9 @@ public class JsonSqlContext {
             if(ObjectUtil.isNotEmpty(lifecycleListeners)){
                 jsonSqlContext.getLifecycleListener().addAll(lifecycleListeners);
             }
-            CustomMethodFactory.registerCustomMethod(jsonSqlContext);
-            CustomMethodFactory.registerCompareSymbolMethod(jsonSqlContext);
-            CustomMethodFactory.registerCalculateOperatorSymbolMethod(jsonSqlContext);
+            CustomMethodFactory.registerClassPathCustomMethod(jsonSqlContext);
+            CustomMethodFactory.registerClassPathCompareSymbolMethod(jsonSqlContext);
+            CustomMethodFactory.registerClassPathCalculateOperatorSymbolMethod(jsonSqlContext);
             return jsonSqlContext;
         }
 
@@ -306,6 +339,16 @@ public class JsonSqlContext {
     }
 
     /**
+     * 批量注册自定义UDF函数
+     * @param pathName 扫描的路径全局唯一名称
+     * @param urls urls
+     */
+    public void registerFunction(String pathName,Collection<URL> urls){
+        CustomMethodFactory.registerCustomMethod(this,pathName,urls);
+    }
+
+
+    /**
      * 注册自定义UDF函数
      * @param functionName 函数名
      * @param method 实现的具体方法，只能是静态方法
@@ -426,7 +469,23 @@ public class JsonSqlContext {
         return jsonSqlVisitor.jsonToCsv(result,outputHeader);
     }
 
+    /**
+     * 将json中的第一个key的值获取出来
+     * @param json json格式的字符串
+     * @return 第一个key的值
+     */
+    public Object jsonToLiteral(String json) {
+        return jsonSqlVisitor.jsonToLiteral(json);
+    }
 
+    /**
+     * 将一个select sql的结果的第一个key的值获取出来
+     * @param sql select sql
+     * @return 一个key的值
+     */
+    public Object resultToLiteral(String sql) {
+        return jsonSqlVisitor.resultToLiteral(sql);
+    }
 
     /**
      * 执行sql

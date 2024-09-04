@@ -27,7 +27,7 @@ public class JobParameters extends JobParam.CommonJobParam implements Serializab
   @Parameter(names = {"--sqlFile"}, help = true, required = false,description = "需要执行的sql文件")
   private String sqlFile;
 
-  @Parameter(names = {"--format"}, help = true, required = false,description = "输出的格式: non / csv / json")
+  @Parameter(names = {"--format"}, help = true, required = false,description = "输出的格式: non / csv / json / literal (仅取第一个key的值)")
   private String format;
 
   @Parameter(names = {"--no_header","--no_outputHeader"}, help = true, required = false,description = "是否输出表头，默认值：true")

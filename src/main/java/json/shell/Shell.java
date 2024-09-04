@@ -21,6 +21,7 @@ import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,7 @@ public class Shell {
 
     private Terminal terminal = null;
 
-    private Parser parser = new DefaultParser();;
+    private Parser parser = new DefaultParser();
 
     private ConsoleLog consoleLog;
 
@@ -49,6 +50,7 @@ public class Shell {
     private JsonSqlContext jsonSqlContext = JsonSqlContext.builder().build();
 
     private Boolean init = false;
+    private Boolean initFinish = false;
 
     private boolean terminalOutPut = true;
 
@@ -58,6 +60,7 @@ public class Shell {
 //        // 关闭终端输出模式，通过接收返回值，自行打印输出结果
 //        shell.setTerminalOutPut(false);
 //        shell.init();
+//        shell.initFinish();
 //        String next = ConsoleLog.input();
 //        Object result = shell.startCommand(next);
 //        if(ObjectUtil.isNotEmpty(result)){
@@ -69,6 +72,7 @@ public class Shell {
         try {
             Shell shell = new Shell();
             shell.init();
+            shell.initFinish();
             shell.startTerminal();
             shell.close();
         } catch (Exception e) {
@@ -85,6 +89,26 @@ public class Shell {
         }
         init = true;
         Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInClasspath(CommandClass.class);
+        parseCommand(classes);
+    }
+
+    /**
+     * 批量解析命令
+     * @param urls urls
+     */
+    public void addCommand(Collection<URL> urls){
+        Set<Class<?>> classes = PackageAnnotationScanner.scanClassesByAnnotationInUrls(CommandClass.class,urls);
+        parseCommand(classes);
+    }
+
+    /**
+     * 解析命令
+     * @param classes 命令classes
+     */
+    public void parseCommand(Set<Class<?>> classes){
+        if(ObjectUtil.isEmpty(classes)){
+            return;
+        }
         Set<String> commandNameSet = new HashSet<>();
         for (Class<?> aClass : classes) {
             List<CommandDescInfo> commandDescInfos = CommandParser.classParser(aClass, true, (Method[]) null);
@@ -101,10 +125,19 @@ public class Shell {
         }
 
         if(ObjectUtil.isNotEmpty(commandDescInfoList)){
-            commandDescInfoMap = commandDescInfoList.stream()
-                    .collect(Collectors.toMap(CommandDescInfo::getName, commandDescInfo -> commandDescInfo));
+            commandDescInfoMap.putAll(commandDescInfoList.stream()
+                    .collect(Collectors.toMap(CommandDescInfo::getName, commandDescInfo -> commandDescInfo)));
         }
+    }
 
+    /**
+     * 完成最后初始化
+     */
+    public void initFinish(){
+        if(initFinish){
+            return ;
+        }
+        initFinish = true;
         shellContext.setJsonSqlContext(jsonSqlContext);
         shellContext.setCommandDescInfoMap(commandDescInfoMap);
         shellContext.setDefaultSavePath("."+ FileUtil.FILE_SEPARATOR+"data");

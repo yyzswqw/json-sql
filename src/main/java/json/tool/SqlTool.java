@@ -52,6 +52,16 @@ public class SqlTool {
             }else{
                 Console.log(csv);
             }
+        }else if(format.equalsIgnoreCase("literal")){
+            Object value = jsonSqlContext.jsonToLiteral(result);
+            if(ObjectUtil.isNotEmpty(outputFile)){
+                if(ObjectUtil.isNull(value)){
+                    value = "";
+                }
+                FileUtil.writeUtf8String(value.toString(),outputFile);
+            }else{
+                Console.log(value);
+            }
         }else{
             if(ObjectUtil.isNotEmpty(outputFile)){
                 FileUtil.writeUtf8String(result,outputFile);

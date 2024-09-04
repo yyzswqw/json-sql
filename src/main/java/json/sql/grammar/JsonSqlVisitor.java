@@ -723,6 +723,73 @@ public class JsonSqlVisitor extends SqlBaseVisitor<Object> {
     }
 
     /**
+     * 将json中的第一个key的值获取出来
+     * @param json json格式的字符串
+     * @return 第一个key的值
+     */
+    public Object jsonToLiteral(String json) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(json);
+            return convertJsonToLiteral(jsonNode);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 将一个select sql的结果的第一个key的值获取出来
+     * @param sql select sql
+     * @return 一个key的值
+     */
+    public Object resultToLiteral(String sql) {
+        String result = this.sql(sql);
+        return this.jsonToLiteral(result);
+    }
+
+    private Object convertJsonToLiteral(JsonNode jsonNode) {
+        if(Objects.isNull(jsonNode)){
+            return "";
+        }
+        if(jsonNode instanceof NumericNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof TextNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof POJONode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof ValueNode){
+            return jsonNode.asText();
+        }else if(jsonNode instanceof ArrayNode){
+            ArrayNode arrayNode = (ArrayNode)jsonNode;
+            JsonNode firstObject = arrayNode.get(0);
+            Iterator<Map.Entry<String, JsonNode>> fields = firstObject.fields();
+            if (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                JsonNode value = field.getValue();
+                if(value instanceof ObjectNode || value instanceof ArrayNode){
+                    return convertJsonToLiteral(value);
+                }else{
+                    return value.asText();
+                }
+            }
+            return "";
+        }else if(jsonNode instanceof ObjectNode){
+            ObjectNode jsonObject = (ObjectNode)jsonNode;
+            Iterator<Map.Entry<String, JsonNode>> fields = jsonObject.fields();
+            if (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                JsonNode value = field.getValue();
+                if(value instanceof ObjectNode || value instanceof ArrayNode){
+                    return convertJsonToLiteral(value);
+                }else{
+                    return value.asText();
+                }
+            }
+            return "";
+        }
+        return jsonNode.asText();
+    }
+
+    /**
      * 转换json为csv
      * @param jsonNode jsonNode
      * @param outputHeader 是否输出表头
