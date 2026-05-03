@@ -7,16 +7,33 @@ import com.jayway.jsonpath.JsonPath;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PathUtil {
+
+    private static final Pattern NEGATIVE_INDEX_PATTERN = Pattern.compile("\\[(-\\d+)]");
 
     private PathUtil(){}
 
     public static void main(String[] args) throws Exception {
+//        cn.hutool.json.JSONObject json = cn.hutool.json.JSONUtil.createObj();
+//
+//        // 2. 直接设置深层嵌套路径，中间节点会自动创建
+//        // 即使 "user", "info" 节点不存在，也不会报错，而是自动构建
+//        cn.hutool.json.JSONUtil.putByPath(json,"user.info.name", "张三");
+//        cn.hutool.json.JSONUtil.putByPath(json,"user.info.age", 18);
+//        cn.hutool.json.JSONUtil.putByPath(json,"data.list[3].id", 1001); //只会创建一个数据对象
+//        // 3. 输出结果
+//        System.out.println(json.toStringPretty());
+
+
         String json = "{}";
 //        String json = "{\"name\":[{},{},[{},{},{\"n2\":[{},{},{},{},{}]}]]}";
 //        String jsonPath = "name[2][2][\"n2\"][*].a.b.c";
         String jsonPath = "$.name[2][2][\"n2\"][0:2]['b']['c']";
+//        String jsonPath = "$[\"b\"][\"name\"]";
+//        String jsonPath = "$.b[\"name\"]";
 //        String jsonPath = "$.users[*]['b']['c']";
         DocumentContext parse = JsonPath.parse(json);
         createPath(parse, jsonPath);
@@ -51,14 +68,20 @@ public class PathUtil {
                         String pathName = path.substring(startFlag, path.indexOf("[",startFlag));
                         firstFlagIndex = path.indexOf("]", firstFlagIndex+1);
                         String flag = path.substring(path.indexOf("[",startFlag) + 1, firstFlagIndex);
+//
                         if(ObjectUtil.equal(parentPath,pathName)){
-                            // 不需要处理
-                            parentPath += "["+flag+"]";
+                            jsonValue = getJsonValue(documentContext, parentPath+"."+ "["+flag+"]", Object.class);
+                            if(ObjectUtil.isEmpty(jsonValue)){
+                                createPath(documentContext,parentPath +"." + "["+flag+"]");
+                            }
+                            parentPath += "." + "["+flag+"]";
                         }else if("*".equals(flag)){
                             if(ObjectUtil.isNotEmpty(pathName)){
                                 Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
                                 if(ObjectUtil.isEmpty(value)){
-                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.put(newParentPath,pathName, new LinkedHashMap<>());
+//                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
                                 }
                                 parentPath += "."+pathName;
                             }
@@ -70,7 +93,9 @@ public class PathUtil {
                             }else{
                                 jsonValue = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
                                 if(ObjectUtil.isEmpty(jsonValue)){
-                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.put(newParentPath,pathName, new LinkedHashMap<>());
+//                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
                                 }
                                 createPath(documentContext,parentPath + "."+pathName+"."+nextKey);
                                 parentPath += "."+pathName+"."+nextKey;
@@ -88,13 +113,17 @@ public class PathUtil {
                             if(ObjectUtil.isNotEmpty(pathName)){
                                 Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
                                 if(ObjectUtil.isEmpty(value)){
-                                    documentContext.put(parentPath,pathName, list);
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.put(newParentPath,pathName, list);
+//                                    documentContext.put(parentPath,pathName, list);
                                 }
                                 parentPath += "."+pathName+"["+flag+"]";
                             }else{
                                 Object value = getJsonValue(documentContext, parentPath, Object.class);
                                 if(ObjectUtil.isEmpty(value)){
-                                    documentContext.set(parentPath, list);
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.set(newParentPath, list);
+//                                    documentContext.set(parentPath, list);
                                 }
                                 parentPath += "["+flag+"]";
                             }
@@ -114,13 +143,17 @@ public class PathUtil {
                             if(ObjectUtil.isNotEmpty(pathName)){
                                 Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
                                 if(ObjectUtil.isEmpty(value)){
-                                    documentContext.put(parentPath,pathName, list);
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.put(newParentPath,pathName, list);
+//                                    documentContext.put(parentPath,pathName, list);
                                 }
                                 parentPath += "."+pathName+"["+flag+"]";
                             }else{
                                 Object value = getJsonValue(documentContext, parentPath, Object.class);
                                 if(ObjectUtil.isEmpty(value)){
-                                    documentContext.set(parentPath, list);
+                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                                    documentContext.set(newParentPath, list);
+//                                    documentContext.set(parentPath, list);
                                 }
                                 parentPath += "["+flag+"]";
                             }
@@ -133,9 +166,12 @@ public class PathUtil {
                         }
                     }
                 }else{
+                    // 不兼容范围或者负数的情况 ， documentContext 无法设置
                     Object value = getJsonValue(documentContext, parentPath+"."+path, Object.class);
                     if(ObjectUtil.isEmpty(value)){
-                        documentContext.put(parentPath,path, new LinkedHashMap<>());
+                        String newParentPath = resolveNegativeIndices(documentContext, parentPath);
+                        documentContext.put(newParentPath,path, new LinkedHashMap<>());
+//                        documentContext.put(parentPath,path, new LinkedHashMap<>());
                     }
                     parentPath += "."+path;
                 }
@@ -152,6 +188,56 @@ public class PathUtil {
         }catch (Exception e){
             return null;
         }
+    }
+
+    /**
+     * 将包含负数下标的路径转换为纯正数下标的路径
+     */
+    public static String resolveNegativeIndices(DocumentContext context, String originalPath) {
+        String resolvedPath = originalPath;
+        // 循环查找并替换所有的负数下标
+        // 例如：$.users[-1].items[-2].name
+        Matcher matcher = NEGATIVE_INDEX_PATTERN.matcher(resolvedPath);
+        // 我们需要从后往前处理，或者动态更新路径，因为替换后索引会变
+        // 这里采用 StringBuilder 动态构建的方式
+        StringBuilder resultPath = new StringBuilder();
+        int lastEnd = 0;
+
+        // 重新匹配，以便处理动态更新后的字符串（如果需要多次替换）
+        // 为了简单，我们这里采用“找到第一个负数 -> 计算 -> 替换 -> 递归/循环”的策略
+        while (matcher.find()) {
+            String negativeIndexStr = matcher.group(1); // 获取 "-1"
+            int negativeIndex = Integer.parseInt(negativeIndexStr);
+            // 1. 截取当前负数下标之前的路径，用于查询数组长度
+            // 例如 $.users[-1]... -> 截取 $.users
+            String arrayPath = resolvedPath.substring(0, matcher.start());
+            // 2. 获取数组长度
+            // 注意：这里需要捕获异常，防止路径无效
+            Object arrayObj = context.read(arrayPath);
+            int size = 0;
+            if (arrayObj instanceof List) {
+                size = ((List<?>) arrayObj).size();
+            } else {
+                throw new IllegalArgumentException("路径 " + arrayPath + " 不是数组");
+            }
+            // 3. 计算正数下标
+            int positiveIndex = size + negativeIndex;
+            if (positiveIndex < 0) {
+                throw new IndexOutOfBoundsException("负数下标越界: " + negativeIndex + ", 数组长度: " + size);
+            }
+            // 4. 替换
+            // 将 [-1] 替换为 [2]
+            String replacement = "[" + positiveIndex + "]";
+            resolvedPath = resolvedPath.substring(0, matcher.start()) + replacement + resolvedPath.substring(matcher.end());
+            // 重置匹配器，因为字符串变了
+            matcher = NEGATIVE_INDEX_PATTERN.matcher(resolvedPath);
+            break; // 每次只处理一个，然后重新匹配，确保顺序正确
+        }
+        // 如果还有负数，继续递归处理
+        if (NEGATIVE_INDEX_PATTERN.matcher(resolvedPath).find()) {
+            return resolveNegativeIndices(context, resolvedPath);
+        }
+        return resolvedPath;
     }
 
     /**
