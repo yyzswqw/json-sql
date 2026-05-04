@@ -10,262 +10,493 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * JSON 路径创建工具
+ * 支持在空 JSON 上根据路径自动创建嵌套结构
+ * 
+ * <p>支持的路径格式：</p>
+ * <ul>
+ *   <li>普通路径：$.a.b.c</li>
+ *   <li>数组索引：$.arr[0].b.c</li>
+ *   <li>连续数组索引：$.arr[2][2].b.c</li>
+ *   <li>通配符 [*]：$.users[*].name</li>
+ *   <li>通配符 *：$.users.*.name</li>
+ *   <li>范围 [start:end]：$.arr[0:3].name</li>
+ *   <li>负数索引：$.arr[-1].name</li>
+ *   <li>引号键名：$["key-with-dashes"].name</li>
+ * </ul>
+ */
 public class PathUtil {
 
     private static final Pattern NEGATIVE_INDEX_PATTERN = Pattern.compile("\\[(-\\d+)]");
 
-    private PathUtil(){}
+    private PathUtil() {}
 
-    public static void main(String[] args) throws Exception {
-//        cn.hutool.json.JSONObject json = cn.hutool.json.JSONUtil.createObj();
-//
-//        // 2. 直接设置深层嵌套路径，中间节点会自动创建
-//        // 即使 "user", "info" 节点不存在，也不会报错，而是自动构建
-//        cn.hutool.json.JSONUtil.putByPath(json,"user.info.name", "张三");
-//        cn.hutool.json.JSONUtil.putByPath(json,"user.info.age", 18);
-//        cn.hutool.json.JSONUtil.putByPath(json,"data.list[3].id", 1001); //只会创建一个数据对象
-//        // 3. 输出结果
-//        System.out.println(json.toStringPretty());
+    // ==================== 主入口 ====================
 
-
-        String json = "{}";
-//        String json = "{\"name\":[{},{},[{},{},{\"n2\":[{},{},{},{},{}]}]]}";
-//        String jsonPath = "name[2][2][\"n2\"][*].a.b.c";
-        String jsonPath = "$.name[2][2][\"n2\"][0:2]['b']['c']";
-//        String jsonPath = "$[\"b\"][\"name\"]";
-//        String jsonPath = "$.b[\"name\"]";
-//        String jsonPath = "$.users[*]['b']['c']";
-        DocumentContext parse = JsonPath.parse(json);
-        createPath(parse, jsonPath);
-        System.out.println(parse.jsonString());
-    }
-
-    public static void createPath(DocumentContext documentContext,String jsonPath){
+    /**
+     * 在 JSON 文档上创建指定路径的嵌套结构
+     * 
+     * @param documentContext JSON 文档上下文
+     * @param jsonPath JSON 路径，如 "$.users[*].name" 或 "a.b.c"
+     */
+    public static void createPath(DocumentContext documentContext, String jsonPath) {
         String[] paths = jsonPath.split("\\.");
         String parentPath = "$";
+
         for (int j = 0; j < paths.length; j++) {
             String path = paths[j];
-            // $..name,这种写法就会是空
-            if(ObjectUtil.isEmpty(path)){
+
+            // 跳过空路径和根路径
+            if (ObjectUtil.isEmpty(path) || "$".equals(path)) {
                 continue;
             }
-            if("$".equals(path)){
-                continue;
-            }
-            String tempJsonPath = "";
-            if(path.startsWith("$")){
-                tempJsonPath = path;
-            }else{
-                tempJsonPath = parentPath + "."+path;
-            }
-            Object jsonValue = getJsonValue(documentContext, tempJsonPath, Object.class);
-            if(ObjectUtil.isEmpty(jsonValue)){
+
+            // 构建完整路径
+            String tempJsonPath = path.startsWith("$") ? path : parentPath + "." + path;
+
+            // 如果 parentPath 包含通配符，跳过读取（通配符路径无法直接读取）
+            boolean hasWildcard = parentPath.contains("[*]");
+            Object jsonValue = hasWildcard ? null : getJsonValue(documentContext, tempJsonPath, Object.class);
+
+            // 如果值不存在，创建路径
+            if (ObjectUtil.isEmpty(jsonValue)) {
                 if (path.contains("[")) {
-                    int startFlag = 0;
-                    int firstFlagIndex = 0;
-                    while (path.indexOf("[",startFlag) >= 0){
-                        path = path.trim();
-                        String pathName = path.substring(startFlag, path.indexOf("[",startFlag));
-                        firstFlagIndex = path.indexOf("]", firstFlagIndex+1);
-                        String flag = path.substring(path.indexOf("[",startFlag) + 1, firstFlagIndex);
-//
-                        if(ObjectUtil.equal(parentPath,pathName)){
-                            jsonValue = getJsonValue(documentContext, parentPath+"."+ "["+flag+"]", Object.class);
-                            if(ObjectUtil.isEmpty(jsonValue)){
-                                createPath(documentContext,parentPath +"." + "["+flag+"]");
-                            }
-                            parentPath += "." + "["+flag+"]";
-                        }else if("*".equals(flag)){
-                            if(ObjectUtil.isNotEmpty(pathName)){
-                                Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
-                                if(ObjectUtil.isEmpty(value)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.put(newParentPath,pathName, new LinkedHashMap<>());
-//                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
-                                }
-                                parentPath += "."+pathName;
-                            }
-                        }else if(flag.startsWith("'") || flag.startsWith("\"")){
-                            String nextKey = flag.substring(1, flag.length() - 1);
-                            if(ObjectUtil.isEmpty(pathName)){
-                                createPath(documentContext,parentPath +"."+nextKey);
-                                parentPath += "."+nextKey;
-                            }else{
-                                jsonValue = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
-                                if(ObjectUtil.isEmpty(jsonValue)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.put(newParentPath,pathName, new LinkedHashMap<>());
-//                                    documentContext.put(parentPath,pathName, new LinkedHashMap<>());
-                                }
-                                createPath(documentContext,parentPath + "."+pathName+"."+nextKey);
-                                parentPath += "."+pathName+"."+nextKey;
-                            }
-                        }else if(flag.contains(":")){
-                            // 范围的情况，不存在时，只创建能确定数量的子对象，存在时，会对满足条件下的子对象都新增上对应的key。如 ：
-                            // String json = "{\"name\":[{},{},[{},{},{\"n2\":[{},{},{},{},{}]}]]}";
-                            //  String jsonPath = "$.name[2][2][\"n2\"][0:4]['b']['c']";
-                            RangeParams rangeParams = parseRangeParams(flag);
-                            int i = determineMaxSize(rangeParams);
-                            List<Object> list = new ArrayList<>();
-                            for (int i1 = 0; i1 < i; i1++) {
-                                list.add(new LinkedHashMap<>());
-                            }
-                            if(ObjectUtil.isNotEmpty(pathName)){
-                                Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
-                                if(ObjectUtil.isEmpty(value)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.put(newParentPath,pathName, list);
-//                                    documentContext.put(parentPath,pathName, list);
-                                }
-                                parentPath += "."+pathName+"["+flag+"]";
-                            }else{
-                                Object value = getJsonValue(documentContext, parentPath, Object.class);
-                                if(ObjectUtil.isEmpty(value)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.set(newParentPath, list);
-//                                    documentContext.set(parentPath, list);
-                                }
-                                parentPath += "["+flag+"]";
-                            }
-                        }else{
-                            // 具体数组下标的情况，但可能为负数
-                            int i = Integer.parseInt(flag);
-                            // 兼容负数的情况
-                            i = Math.abs(i);
-                            List<Object> list = new ArrayList<>();
-                            for (int i1 = 0; i1 < i+1; i1++) {
-                                list.add(new LinkedHashMap<>());
-                            }
-                            // 负数的情况，因为前面已经兼容了负数的情况，所以这里应该是不会进来的
-                            if(list.isEmpty()){
-                                list.add(new LinkedHashMap<>());
-                            }
-                            if(ObjectUtil.isNotEmpty(pathName)){
-                                Object value = getJsonValue(documentContext, parentPath+"."+pathName, Object.class);
-                                if(ObjectUtil.isEmpty(value)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.put(newParentPath,pathName, list);
-//                                    documentContext.put(parentPath,pathName, list);
-                                }
-                                parentPath += "."+pathName+"["+flag+"]";
-                            }else{
-                                Object value = getJsonValue(documentContext, parentPath, Object.class);
-                                if(ObjectUtil.isEmpty(value)){
-                                    String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                                    documentContext.set(newParentPath, list);
-//                                    documentContext.set(parentPath, list);
-                                }
-                                parentPath += "["+flag+"]";
-                            }
-                        }
-
-                        if(path.trim().length()-1 != firstFlagIndex){
-                            startFlag = firstFlagIndex +1;
-                        }else{
-                            path = "";
-                        }
-                    }
-                }else{
-                    // 不兼容范围或者负数的情况 ， documentContext 无法设置
-                    Object value = getJsonValue(documentContext, parentPath+"."+path, Object.class);
-                    if(ObjectUtil.isEmpty(value)){
-                        String newParentPath = resolveNegativeIndices(documentContext, parentPath);
-                        documentContext.put(newParentPath,path, new LinkedHashMap<>());
-//                        documentContext.put(parentPath,path, new LinkedHashMap<>());
-                    }
-                    parentPath += "."+path;
+                    parentPath = processPathWithBrackets(documentContext, path, parentPath, j, paths);
+                } else {
+                    processPathWithoutBrackets(documentContext, path, parentPath, j, paths);
+                    parentPath = appendToParentPath(parentPath, path);
                 }
-
-            }else{
+            } else {
+                // 值已存在，更新 parentPath
                 parentPath = tempJsonPath;
             }
         }
     }
 
+    // ==================== 路径段处理 ====================
+
+    /**
+     * 处理包含方括号的路径段（如 "arr[0][2].name[*]"）
+     *
+     * @return 更新后的 parentPath
+     */
+    private static String processPathWithBrackets(DocumentContext ctx, String originalPath, String parentPath, int j, String[] paths) {
+        String path = originalPath.trim();
+        int startFlag = 0;
+        int firstFlagIndex = 0;
+        String resultPath = parentPath;
+
+        while (path.indexOf("[", startFlag) >= 0) {
+            path = path.trim();
+            String pathName = path.substring(startFlag, path.indexOf("[", startFlag));
+            firstFlagIndex = path.indexOf("]", firstFlagIndex + 1);
+            String flag = path.substring(path.indexOf("[", startFlag) + 1, firstFlagIndex);
+
+            // 判断当前方括号是否是路径段中的最后一个
+            boolean isLastBracket = !hasMoreBrackets(path, firstFlagIndex + 1);
+
+            // 根据 flag 类型分发处理
+            if (ObjectUtil.equal(resultPath, pathName)) {
+                handleParentPathEqualsPathName(ctx, resultPath, flag);
+                resultPath += "." + "[" + flag + "]";
+            } else if ("*".equals(flag)) {
+                handleWildcard(ctx, resultPath, pathName);
+                resultPath = appendWildcard(resultPath, pathName);
+            } else if (flag.startsWith("'") || flag.startsWith("\"")) {
+                handleQuotedKey(ctx, resultPath, pathName, flag, j, paths);
+                resultPath = appendQuotedKey(resultPath, pathName, flag);
+            } else if (flag.contains(":")) {
+                handleRange(ctx, resultPath, pathName, flag, isLastBracket, j, paths);
+                resultPath = appendBracket(resultPath, pathName, flag);
+            } else {
+                handleNumericIndex(ctx, resultPath, pathName, flag, isLastBracket, j, paths);
+                resultPath = appendBracket(resultPath, pathName, flag);
+            }
+
+            // 更新循环位置
+            if (path.trim().length() - 1 != firstFlagIndex) {
+                startFlag = firstFlagIndex + 1;
+            } else {
+                path = "";
+            }
+        }
+
+        return resultPath;
+    }
+
+    /**
+     * 处理不带方括号的路径段
+     */
+    private static void processPathWithoutBrackets(DocumentContext ctx, String path, String parentPath, int j, String[] paths) {
+        // 处理通配符 *（如 $.users.*.b.c 中的 *）
+        if ("*".equals(path)) {
+            ensureArrayForWildcard(ctx, parentPath);
+        } else {
+            // 普通键名，创建空对象
+            Object value = getJsonValue(ctx, parentPath + "." + path, Object.class);
+            if (ObjectUtil.isEmpty(value)) {
+                String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+                ctx.put(newParentPath, path, new LinkedHashMap<>());
+            }
+        }
+    }
+
+    // ==================== 方括号内类型处理 ====================
+
+    /**
+     * 处理 pathName 等于 parentPath 的情况（连续数组索引）
+     */
+    private static void handleParentPathEqualsPathName(DocumentContext ctx, String parentPath, String flag) {
+        Object jsonValue = getJsonValue(ctx, parentPath + "." + "[" + flag + "]", Object.class);
+        if (ObjectUtil.isEmpty(jsonValue)) {
+            createPath(ctx, parentPath + "." + "[" + flag + "]");
+        }
+    }
+
+    /**
+     * 处理通配符 [*]
+     * 将当前路径的值转换为数组，以便后续通配符匹配
+     */
+    private static void handleWildcard(DocumentContext ctx, String parentPath, String pathName) {
+        // 如果有 pathName，先确保 pathName 对应的键存在
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            Object value = getJsonValue(ctx, parentPath + "." + pathName, Object.class);
+            if (ObjectUtil.isEmpty(value)) {
+                String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+                ctx.put(newParentPath, pathName, new LinkedHashMap<>());
+            }
+            parentPath += "." + pathName;
+        }
+
+        // 将当前路径的值转换为数组
+        ensureArrayForWildcard(ctx, parentPath);
+    }
+
+    /**
+     * 确保指定路径的值是数组（用于通配符处理）
+     */
+    private static void ensureArrayForWildcard(DocumentContext ctx, String parentPath) {
+        Object currentValue = getJsonValue(ctx, parentPath, Object.class);
+        String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+
+        if (ObjectUtil.isNotEmpty(currentValue) && !(currentValue instanceof List)) {
+            // 当前值是对象，转换为数组的第一个元素
+            List<Object> array = new ArrayList<>();
+            array.add(currentValue);
+            ctx.set(newParentPath, array);
+        } else if (ObjectUtil.isEmpty(currentValue)) {
+            // 值不存在，创建一个包含空对象的数组
+            List<Object> array = new ArrayList<>();
+            array.add(new LinkedHashMap<>());
+            ctx.set(newParentPath, array);
+        } else if (currentValue instanceof List) {
+            // 是数组但为空，添加一个空对象元素
+            List<Object> arr = (List<Object>) currentValue;
+            if (arr.isEmpty()) {
+                arr.add(new LinkedHashMap<>());
+                ctx.set(newParentPath, arr);
+            }
+        }
+    }
+
+    /**
+     * 处理引号键名（如 ["key-name"]）
+     */
+    private static void handleQuotedKey(DocumentContext ctx, String parentPath, String pathName, String flag, int j, String[] paths) {
+        String nextKey = flag.substring(1, flag.length() - 1);
+
+        if (ObjectUtil.isEmpty(pathName)) {
+            createPath(ctx, parentPath + "." + nextKey);
+        } else {
+            Object jsonValue = getJsonValue(ctx, parentPath + "." + pathName, Object.class);
+            if (ObjectUtil.isEmpty(jsonValue)) {
+                String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+                ctx.put(newParentPath, pathName, new LinkedHashMap<>());
+            }
+            createPath(ctx, parentPath + "." + pathName + "." + nextKey);
+        }
+    }
+
+    /**
+     * 处理范围索引（如 [0:3]、[start:end]）
+     */
+    private static void handleRange(DocumentContext ctx, String parentPath, String pathName, String flag, boolean isLastBracket, int j, String[] paths) {
+        RangeParams rangeParams = parseRangeParams(flag);
+        int size = determineMaxSize(rangeParams);
+
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            createOrExpandArray(ctx, parentPath, pathName, size, true, isLastBracket, j, paths);
+        } else {
+            createOrExpandArrayAtParent(ctx, parentPath, size, true, isLastBracket, j, paths);
+        }
+    }
+
+    /**
+     * 处理数字索引（如 [2]、[0]、[-1]）
+     */
+    private static void handleNumericIndex(DocumentContext ctx, String parentPath, String pathName, String flag, boolean isLastBracket, int j, String[] paths) {
+        int rawIndex = Integer.parseInt(flag);
+        // 负数索引：-1 表示最后一个元素，数组不存在时创建 |index| 个元素
+        // 正数索引：2 表示索引 2，数组不存在时创建 3 个元素（0,1,2）
+        int arraySize = rawIndex < 0 ? Math.abs(rawIndex) : rawIndex + 1;
+
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            createOrExpandArray(ctx, parentPath, pathName, arraySize, false, isLastBracket, j, paths);
+        } else {
+            createOrExpandArrayAtParent(ctx, parentPath, arraySize, false, isLastBracket, j, paths);
+        }
+    }
+
+    // ==================== 数组创建/扩展 ====================
+
+    /**
+     * 在指定键名上创建或扩展数组
+     *
+     * @param ctx JSON 上下文
+     * @param parentPath 父路径
+     * @param pathName 键名
+     * @param arraySize 数组大小
+     * @param isRange 是否是范围索引
+     * @param isLastBracket 是否是最后一个方括号
+     * @param j 当前路径段索引
+     * @param paths 所有路径段
+     */
+    private static void createOrExpandArray(DocumentContext ctx, String parentPath, String pathName, int arraySize, boolean isRange, boolean isLastBracket, int j, String[] paths) {
+        Object value = getJsonValue(ctx, parentPath + "." + pathName, Object.class);
+
+        if (ObjectUtil.isEmpty(value)) {
+            // 数组不存在，创建
+            List<Object> list = createArrayWithNestedStructure(arraySize, isLastBracket, j, paths);
+            String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+            ctx.put(newParentPath, pathName, list);
+        } else if (value instanceof List) {
+            // 数组已存在，扩展
+            List<Object> existingList = (List<Object>) value;
+            int currentSize = existingList.size();
+            int targetSize = Math.max(currentSize, arraySize);
+
+            for (int idx = currentSize; idx < targetSize; idx++) {
+                // 只有最后一个索引才创建后续嵌套结构，中间的元素为空对象
+                boolean isTargetIndex = (idx == arraySize - 1);
+                existingList.add(isTargetIndex ? createNestedElement(isLastBracket, j, paths) : new LinkedHashMap<>());
+            }
+
+            String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+            ctx.put(newParentPath, pathName, existingList);
+        }
+    }
+
+    /**
+     * 在父路径上创建或扩展数组（pathName 为空的情况）
+     */
+    private static void createOrExpandArrayAtParent(DocumentContext ctx, String parentPath, int arraySize, boolean isRange, boolean isLastBracket, int j, String[] paths) {
+        Object value = getJsonValue(ctx, parentPath, Object.class);
+
+        if (ObjectUtil.isEmpty(value)) {
+            // 数组不存在，创建
+            List<Object> list = createArrayWithNestedStructure(arraySize, isLastBracket, j, paths);
+            String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+            ctx.set(newParentPath, list);
+        } else if (value instanceof List) {
+            // 数组已存在，扩展
+            List<Object> existingList = (List<Object>) value;
+            int currentSize = existingList.size();
+            int targetSize = Math.max(currentSize, arraySize);
+
+            for (int idx = currentSize; idx < targetSize; idx++) {
+                // 只有最后一个索引才创建后续嵌套结构，中间的元素为空对象
+                boolean isTargetIndex = (idx == arraySize - 1);
+                existingList.add(isTargetIndex ? createNestedElement(isLastBracket, j, paths) : new LinkedHashMap<>());
+            }
+
+            String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+            ctx.set(newParentPath, existingList);
+        } else {
+            // 当前值是对象而不是数组，转换为数组
+            List<Object> newArray = convertObjectToArray(value, arraySize, isLastBracket, j, paths);
+            String newParentPath = safeResolveNegativeIndices(ctx, parentPath);
+            ctx.set(newParentPath, newArray);
+        }
+    }
+
+    /**
+     * 创建包含嵌套结构的数组
+     */
+    private static List<Object> createArrayWithNestedStructure(int size, boolean isLastBracket, int j, String[] paths) {
+        List<Object> list = new ArrayList<>();
+        for (int idx = 0; idx < size; idx++) {
+            list.add(createNestedElement(isLastBracket, j, paths));
+        }
+        return list;
+    }
+
+    /**
+     * 创建单个嵌套元素（包含后续路径的嵌套结构）
+     */
+    private static LinkedHashMap<String, Object> createNestedElement(boolean isLastBracket, int j, String[] paths) {
+        LinkedHashMap<String, Object> element = new LinkedHashMap<>();
+
+        // 只有最后一个方括号才创建后续嵌套结构
+        if (isLastBracket && j + 1 < paths.length) {
+            String remainingPath = String.join(".", java.util.Arrays.copyOfRange(paths, j + 1, paths.length));
+            if (!remainingPath.isEmpty()) {
+                DocumentContext elementContext = JsonPath.parse("{}");
+                createPath(elementContext, "$." + remainingPath);
+                element.putAll(elementContext.read("$"));
+            }
+        }
+
+        return element;
+    }
+
+    /**
+     * 将对象转换为数组的第一个元素，并扩展数组到目标大小
+     */
+    private static List<Object> convertObjectToArray(Object existingObject, int arraySize, boolean isLastBracket, int j, String[] paths) {
+        List<Object> newArray = new ArrayList<>();
+        newArray.add(existingObject); // 添加已有对象作为第一个元素
+
+        for (int idx = 1; idx < arraySize; idx++) {
+            newArray.add(createNestedElement(isLastBracket, j, paths));
+        }
+
+        return newArray;
+    }
+
+    // ==================== 辅助方法 ====================
+
+    /**
+     * 追加通配符到 parentPath
+     */
+    private static String appendWildcard(String parentPath, String pathName) {
+        String result = parentPath;
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            result += "." + pathName;
+        }
+        return result + "[*]";
+    }
+
+    /**
+     * 追加引号键名到 parentPath
+     */
+    private static String appendQuotedKey(String parentPath, String pathName, String flag) {
+        String nextKey = flag.substring(1, flag.length() - 1);
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            return parentPath + "." + pathName + "." + nextKey;
+        }
+        return parentPath + "." + nextKey;
+    }
+
+    /**
+     * 追加方括号到 parentPath
+     */
+    private static String appendBracket(String parentPath, String pathName, String flag) {
+        if (ObjectUtil.isNotEmpty(pathName)) {
+            return parentPath + "." + pathName + "[" + flag + "]";
+        }
+        return parentPath + "[" + flag + "]";
+    }
+
+    /**
+     * 追加到 parentPath
+     */
+    private static String appendToParentPath(String parentPath, String path) {
+        if ("*".equals(path)) {
+            return parentPath + "[*]";
+        }
+        return parentPath + "." + path;
+    }
+
+    /**
+     * 获取 JSON 值，失败返回 null
+     */
     public static <T> T getJsonValue(DocumentContext jsonDocument, String jsonPath, Class<T> clazz) {
         try {
-            return jsonDocument.read( jsonPath,clazz);
-        }catch (Exception e){
+            return jsonDocument.read(jsonPath, clazz);
+        } catch (Exception e) {
             return null;
         }
     }
 
     /**
-     * 将包含负数下标的路径转换为纯正数下标的路径
+     * 检查路径段中从指定位置之后是否还有后续的方括号索引
+     */
+    private static boolean hasMoreBrackets(String path, int afterIndex) {
+        if (afterIndex >= path.length()) {
+            return false;
+        }
+        return path.substring(afterIndex).contains("[");
+    }
+
+    /**
+     * 安全地解析负数索引路径。如果路径包含通配符 [*]，则直接返回原路径
+     */
+    private static String safeResolveNegativeIndices(DocumentContext context, String path) {
+        if (path.contains("[*]")) {
+            return path;
+        }
+        return resolveNegativeIndices(context, path);
+    }
+
+    // ==================== 负数索引解析 ====================
+
+    /**
+     * 将包含负数下标的路径转换为正数下标的路径
      */
     public static String resolveNegativeIndices(DocumentContext context, String originalPath) {
         String resolvedPath = originalPath;
-        // 循环查找并替换所有的负数下标
-        // 例如：$.users[-1].items[-2].name
         Matcher matcher = NEGATIVE_INDEX_PATTERN.matcher(resolvedPath);
-        // 我们需要从后往前处理，或者动态更新路径，因为替换后索引会变
-        // 这里采用 StringBuilder 动态构建的方式
-        StringBuilder resultPath = new StringBuilder();
-        int lastEnd = 0;
 
-        // 重新匹配，以便处理动态更新后的字符串（如果需要多次替换）
-        // 为了简单，我们这里采用“找到第一个负数 -> 计算 -> 替换 -> 递归/循环”的策略
         while (matcher.find()) {
-            String negativeIndexStr = matcher.group(1); // 获取 "-1"
+            String negativeIndexStr = matcher.group(1);
             int negativeIndex = Integer.parseInt(negativeIndexStr);
-            // 1. 截取当前负数下标之前的路径，用于查询数组长度
-            // 例如 $.users[-1]... -> 截取 $.users
+
             String arrayPath = resolvedPath.substring(0, matcher.start());
-            // 2. 获取数组长度
-            // 注意：这里需要捕获异常，防止路径无效
             Object arrayObj = context.read(arrayPath);
+
             int size = 0;
             if (arrayObj instanceof List) {
                 size = ((List<?>) arrayObj).size();
             } else {
                 throw new IllegalArgumentException("路径 " + arrayPath + " 不是数组");
             }
-            // 3. 计算正数下标
+
             int positiveIndex = size + negativeIndex;
             if (positiveIndex < 0) {
                 throw new IndexOutOfBoundsException("负数下标越界: " + negativeIndex + ", 数组长度: " + size);
             }
-            // 4. 替换
-            // 将 [-1] 替换为 [2]
+
             String replacement = "[" + positiveIndex + "]";
             resolvedPath = resolvedPath.substring(0, matcher.start()) + replacement + resolvedPath.substring(matcher.end());
-            // 重置匹配器，因为字符串变了
             matcher = NEGATIVE_INDEX_PATTERN.matcher(resolvedPath);
-            break; // 每次只处理一个，然后重新匹配，确保顺序正确
+            break;
         }
-        // 如果还有负数，继续递归处理
+
         if (NEGATIVE_INDEX_PATTERN.matcher(resolvedPath).find()) {
             return resolveNegativeIndices(context, resolvedPath);
         }
+
         return resolvedPath;
     }
 
+    // ==================== 范围解析 ====================
+
     /**
-     * 解析范围参数
-     * 支持格式：[start:end], [start:], [:end], [::step], [start:end:step]
+     * 解析范围参数，支持格式：[start:end], [start:], [:end], [::step], [start:end:step]
      */
     private static RangeParams parseRangeParams(String flag) {
-        // 移除方括号（如果存在）
         String rangeStr = flag;
         if (flag.startsWith("[") && flag.endsWith("]")) {
             rangeStr = flag.substring(1, flag.length() - 1);
         }
-        // 分割参数
-        String[] parts = rangeStr.split(":", -1); // 使用-1保留空字符串
 
-        Integer start = null;
-        Integer end = null;
-        Integer step = null;
-        // 根据参数数量解析
-        if (parts.length >= 1) {
-            start = parseRangeValue(parts[0]);
-        }
-        if (parts.length >= 2) {
-            end = parseRangeValue(parts[1]);
-        }
-        if (parts.length >= 3) {
-            step = parseRangeValue(parts[2]);
-        }
+        String[] parts = rangeStr.split(":", -1);
+
+        Integer start = parts.length >= 1 ? parseRangeValue(parts[0]) : null;
+        Integer end = parts.length >= 2 ? parseRangeValue(parts[1]) : null;
+        Integer step = parts.length >= 3 ? parseRangeValue(parts[2]) : null;
+
         return new RangeParams(start, end, step);
     }
 
@@ -284,77 +515,38 @@ public class PathUtil {
     }
 
     /**
-     * 确定范围的最大值
-     * 根据范围参数确定需要生成的对象数量，无法确定最大值时生成最小需要的数量
+     * 根据范围参数确定需要生成的对象数量
      */
     private static int determineMaxSize(RangeParams params) {
-        // 默认最小大小为1
         int maxSize = 1;
 
-        // 处理各种范围情况，优先处理能确定最大值的情况
         if (params.hasStart() && params.hasEnd()) {
-            // [start:end] 或 [start:end:step] 格式
             int start = params.getStart() != null ? params.getStart() : 0;
             int end = params.getEnd() != null ? params.getEnd() : 0;
 
-            // 处理负数范围 - 无法确定确切的最大值，生成最小需要的
             if (start < 0 || end < 0) {
-                // 负数范围，如 [-3:-1]，无法确定确切大小
-                // 生成最小需要的对象：覆盖负数索引所需的最小数量
-                int absStart = Math.abs(start);
-                int absEnd = Math.abs(end);
-                maxSize = Math.max(absStart, absEnd) + 1; // 最小需要的数量
+                maxSize = Math.max(Math.abs(start), Math.abs(end));
             } else {
-                // 正数范围，可以确定确切的最大值
-                maxSize = Math.max(start, end) + 1;
+                maxSize = Math.max(start, end);
             }
-
         } else if (params.hasStart() && !params.hasEnd()) {
-            // [start:] 格式 - 从start开始到末尾，无法确定确切大小
             int start = params.getStart() != null ? params.getStart() : 0;
-            if (start < 0) {
-                // 负数开始，如 [-3:]，无法确定确切大小
-                // 生成最小需要的对象：覆盖负数索引所需的最小数量
-                maxSize = Math.abs(start) + 1;
-            } else {
-                // 正数开始，如 [3:]，无法知道末尾在哪里
-                // 生成最小需要的对象：只生成起始位置的对象
-                maxSize = start + 1; // 最小需要的数量
-            }
-
+            maxSize = start < 0 ? Math.abs(start) : start;
         } else if (!params.hasStart() && params.hasEnd()) {
-            // [:end] 格式 - 从0到end
             int end = params.getEnd() != null ? params.getEnd() : 0;
-            if (end < 0) {
-                // 负数结束，如 [:-3]，无法确定确切大小
-                // 生成最小需要的对象：覆盖负数索引所需的最小数量
-                maxSize = Math.abs(end) + 1;
-            } else {
-                // 正数结束，可以确定确切的最大值
-                maxSize = end + 1;
-            }
-
+            maxSize = end < 0 ? Math.abs(end) : end;
         } else if (params.hasStep()) {
-            // [::step] 格式 - 步长模式，无法确定确切大小
-            // 生成最小需要的对象：只生成第一个步长的对象
             int step = params.getStep() != null ? Math.abs(params.getStep()) : 1;
-            maxSize = step; // 最小需要的数量
-
-        } else if (!params.hasStart() && !params.hasEnd() && !params.hasStep()) {
-            // [:] 格式 - 全范围，无法确定确切大小
-            // 生成最小需要的对象：只生成一个对象
-            maxSize = 1;
-        } else {
-            // 其他未知格式，使用最小需要的数量
-            maxSize = 1;
+            maxSize = step;
         }
 
-        // 确保最小大小为1，不设置上限，是多少就是多少
         return Math.max(1, maxSize);
     }
 
+    // ==================== 范围参数类 ====================
+
     /**
-     * 范围参数类
+     * 范围参数封装
      */
     public static class RangeParams {
         private final Integer start;
@@ -376,6 +568,37 @@ public class PathUtil {
         public boolean hasStep() { return step != null; }
     }
 
+    // ==================== 测试入口 ====================
 
+    public static void main(String[] args) throws Exception {
+        testCase("空对象普通路径", "{}", "a.b.c", "{\"a\":{\"b\":{\"c\":{}}}}");
+        testCase("通配符 [*]", "{}", "$.users[*].name", "{\"users\":[{\"name\":{}}]}");
+        testCase("通配符 *", "{}", "$.users.*.b.c", "{\"users\":[{\"b\":{\"c\":{}}}]}");
+        testCase("连续数组索引", "{}", "name[2][2][\"n2\"][*].a.b.c", "{\"name\":[{},{},[{},{},{\"n2\":[{\"a\":{\"b\":{\"c\":{}}}}]}]]}");
+        testCase("范围索引", "{}", "$.a[0:2].b[0:3].c", "{\"a\":[{\"b\":[{\"c\":{}},{\"c\":{}},{\"c\":{}}]},{\"b\":[{\"c\":{}},{\"c\":{}},{\"c\":{}}]}]}");
+        testCase("负数索引", "{\"users\":[{},{}]}", "$.users[-1].name", "{\"users\":[{}, {\"name\":{}}]}");
+        testCase("负数索引2", "{}", "$.users[-1].name", "{\"users\":[{\"name\":{}}]}");
+        testCase("引号键名", "{}", "$[\"b\"][\"name\"]", "{\"b\":{\"name\":{}}}");
+        testCase("已存在数组扩展", "{\"name\":[{},{},{}]}", "name[5].b", "{\"name\":[{},{},{},{},{},{\"b\":{}}]}");
 
+        System.out.println("\n===== 所有测试完成 =====");
+    }
+
+    private static void testCase(String name, String json, String jsonPath, String expected) {
+        System.out.println("\n--- 测试: " + name + " ---");
+        System.out.println("JSON: " + json);
+        System.out.println("路径: " + jsonPath);
+        try {
+            DocumentContext parse = JsonPath.parse(json);
+            createPath(parse, jsonPath);
+            String result = parse.jsonString();
+            System.out.println("结果: " + result);
+            if (expected != null) {
+                boolean match = result.replace(" ", "").equals(expected.replace(" ", ""));
+                System.out.println("预期: " + expected + " => " + (match ? "✓ 通过" : "✗ 失败"));
+            }
+        } catch (Exception e) {
+            System.out.println("✗ 异常: " + e.getMessage());
+        }
+    }
 }
